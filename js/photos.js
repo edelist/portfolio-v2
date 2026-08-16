@@ -23,6 +23,12 @@
     // Hero mosaic pool. Tiles slowly cycle through this list, so the pool
     // can be much smaller than the 28 tiles on screen — 10–16 is a good
     // number. Order barely matters; tiles are offset from each other.
+    //
+    // Names are hero-NN.jpg, zero-padded, one lowercase extension. That is a
+    // convention, not a requirement — but it sidesteps a real trap: GitHub
+    // Pages serves from a case-sensitive filesystem, so a stray 'IMG_1.JPG'
+    // listed here as '.jpg' 404s in production while working fine in local
+    // preview on macOS, which is not case-sensitive.
     mosaic: [
       'hero-01.jpg',
       'hero-02.jpg',
@@ -36,6 +42,19 @@
       'hero-10.jpg',
       'hero-11.jpg',
       'hero-12.jpg',
+      'hero-13.jpg',
+      'hero-14.jpg',
+      'hero-15.jpg',
+      'hero-16.jpg',
+      'hero-17.jpg',
+      'hero-18.jpg',
+      'hero-19.jpg',
+      'hero-20.jpg',
+      'hero-21.jpg',
+      'hero-22.jpg',
+      'hero-23.jpg',
+      'hero-24.jpg',
+      'hero-25.jpg',
     ],
   };
 })();

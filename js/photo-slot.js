@@ -33,7 +33,12 @@
     :host{display:block;position:relative;width:100%;height:100%}
     .box{position:absolute;inset:0;overflow:hidden;display:flex;
          align-items:center;justify-content:center}
-    img{width:100%;height:100%;display:block;opacity:0;transition:opacity .45s ease}
+    /* Same deterrent as the mosaic: the host element becomes the hit target,
+       so right-click offers the page menu rather than "Save image as", and
+       the image can't be dragged out. Not protection — just not one click. */
+    img{width:100%;height:100%;display:block;opacity:0;transition:opacity .45s ease;
+        pointer-events:none;-webkit-user-drag:none;user-select:none;
+        -webkit-touch-callout:none}
     img.on{opacity:1}
     .ph{position:absolute;inset:0;display:flex;flex-direction:column;gap:4px;
         align-items:center;justify-content:center;text-align:center;padding:6px;

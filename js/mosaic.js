@@ -3,10 +3,16 @@
  *
  * Three things happen on this grid at once:
  *
- *  1. SLIDESHOW — every tile holds two stacked <img> layers. On a slow
- *     round-robin (one tile every SWAP_MS) a tile crossfades to the next
- *     photo in the pool, so the wall is always quietly turning over
- *     without any two tiles changing together.
+ *  1. PAN — the whole wall is one belt sliding steadily rightward, like a
+ *     sheet being drawn across the screen. It is built one column wider than
+ *     it needs to be and rests one column to the left of the frame; when the
+ *     right-most column has fully cleared the right edge it wraps round to
+ *     the front of the belt and is refilled, so the pan never ends and
+ *     nothing is ever seen changing. Photos only ever change off-screen.
+ *
+ *     Refills keep duplicates apart: a tile never repeats the photo directly
+ *     above it or the one level with it in the neighbouring column, so the
+ *     same picture is never visible twice side by side.
  *
  *  2. SWEEP — a light front travels left→right across the grid on a long
  *     cycle. It is not a straight vertical line: the front is sheared by
@@ -21,9 +27,11 @@
  *     separate hover effect. This is why the tiles carry no CSS :hover
  *     rule: hover and sweep are the same channel, combined per frame.
  *
- * Everything above is one number per tile per frame ("lit", 0→1) driving
- * opacity + grayscale, written only when it actually changed. The page's
- * single rAF loop calls frame(); the element never starts its own.
+ * The lighting is one number per tile per frame ("lit", 0→1) driving opacity
+ * + grayscale, written only when it actually changed. The page's single rAF
+ * loop calls frame(); the element never starts its own. Because the tiles
+ * move, each one's horizontal position is recomputed every frame from its
+ * column's place on the belt rather than fixed at build time.
  *
  * Photos come from window.JACK_PHOTOS (js/photos.js). Visitors cannot add
  * or replace them — there is no input, drop target, or click handler here.
@@ -54,8 +62,11 @@
                          // background and the pointer stays the loud thing
   // ── cursor ─────────────────────────────────────────────────────────────
   const REACH = 0.20;    // pointer light radius, as a fraction of grid width
-  // ── slideshow ──────────────────────────────────────────────────────────
-  const SWAP_MS = 2300;  // one tile changes photo this often
+  // ── pan ────────────────────────────────────────────────────────────────
+  const PAN_MS = 14000;  // ms for the belt to advance one whole column
+  const GAPPX = 8;       // gutter between tiles, both axes
+  const MAX_DT = 100;    // ms — clamp the frame delta so a backgrounded tab
+                         // resuming can't teleport the belt forward
   // ── responsive ─────────────────────────────────────────────────────────
   const NARROW = 700;    // px viewport width below which the grid coarsens
   const NARROW_COLS = 3;
@@ -68,20 +79,33 @@
   const PEAK_FALLBACK = 0.92;
 
   const CSS = `
-    :host{display:block;position:relative}
-    .grid{position:absolute;inset:0;display:grid;gap:8px;padding:8px;
-          box-sizing:border-box}
-    .tile{position:relative;border-radius:4px;
+    :host{display:block;position:relative;overflow:hidden}
+    /* The belt. Wider than the host by one spare column, translated left a
+       little more each frame; when a column has fully cleared the left edge
+       it is moved to the end and refilled, so the pan never ends. */
+    .grid{position:absolute;top:0;bottom:0;left:0;display:flex;gap:${GAPPX}px;
+          padding:${GAPPX}px 0;box-sizing:border-box;will-change:transform}
+    .col{display:flex;flex-direction:column;gap:${GAPPX}px;flex:none}
+    .tile{position:relative;flex:1;min-height:0;border-radius:4px;
           background:rgba(var(--ink-rgb,233,237,242),.035);
           will-change:opacity,filter,transform;
           transform-origin:50% 50%}
     .inner{position:absolute;inset:0;border-radius:inherit;overflow:hidden}
+    /* pointer-events:none makes the tile div, not the photo, the hit target,
+       so a right-click gets the ordinary page menu instead of "Save image
+       as"; -webkit-user-drag stops dragging one to the desktop. Neither
+       protects the file — see README — they just remove the one-click path.
+       Safe here because nothing about this wall is hover-driven: the cursor
+       light reads the pointer's coordinates, not events on the tiles. */
     .inner img{position:absolute;inset:0;width:100%;height:100%;
                object-fit:cover;display:block;opacity:0;
-               transition:opacity 1.2s ease}
+               transition:opacity .6s ease;
+               pointer-events:none;-webkit-user-drag:none;user-select:none;
+               -webkit-touch-callout:none}
     .inner img.on{opacity:1}
     .rim{position:absolute;inset:0;border-radius:inherit;pointer-events:none}
   `;
+
 
   class PhotoMosaic extends HTMLElement {
     constructor() {
@@ -150,65 +174,115 @@
       const narrow = innerWidth < NARROW;
       const cols = narrow ? NARROW_COLS : (parseInt(this.getAttribute('cols'), 10) || 7);
       const rows = narrow ? NARROW_ROWS : (parseInt(this.getAttribute('rows'), 10) || 4);
-      if (this._cols === cols && this._rows === rows && this._tiles.length) return;
+      if (this._nCols === cols && this._nRows === rows && this._tiles.length) return;
       this._grid.textContent = '';
       this._tiles.length = 0;
-      this._swapCursor = 0;
-      this._cols = cols; this._rows = rows;
-      this._grid.style.gridTemplateColumns = `repeat(${cols},1fr)`;
-      this._grid.style.gridTemplateRows = `repeat(${rows},1fr)`;
+      this._nCols = cols; this._nRows = rows;
+      this._offset = 0; this._lastNow = 0; this._w = 0;
 
-      const list = this._photos();
-      const frag = document.createDocumentFragment();
-      for (let i = 0; i < cols * rows; i++) {
-        const el = document.createElement('div');
-        el.className = 'tile';
-        const inner = document.createElement('div');
-        inner.className = 'inner';
-        const rim = document.createElement('div');
-        rim.className = 'rim';
-        const imgs = [document.createElement('img'), document.createElement('img')];
-        imgs.forEach(im => {
-          im.alt = ''; im.draggable = false; im.loading = 'lazy';
-          // A file that isn't in the repo yet just leaves the tile empty,
-          // which still takes part in the sweep — the wall works unfilled.
-          im.addEventListener('error', () => im.classList.remove('on'));
-          inner.appendChild(im);
-        });
-        el.appendChild(inner); el.appendChild(rim);
-        frag.appendChild(el);
-
-        const t = {
-          el, rim, imgs, cur: 0, round: 0,
-          // normalized centre, used by both the sweep and the cursor light
-          cx: ((i % cols) + .5) / cols,
-          cy: (Math.floor(i / cols) + .5) / rows,
-          lit: -1,
-        };
-        if (list.length) this._show(t, i, list[i % list.length]);
-        this._tiles.push(t);
-      }
-      this._grid.appendChild(frag);
-      // Stagger the first cycle so the pool doesn't march in index order.
-      this._order = this._tiles.map((_, i) => i);
-      for (let i = this._order.length - 1; i > 0; i--) {
+      // Shuffle once so the belt doesn't march through the folder in
+      // filename order, which reads as a pattern rather than a wall.
+      const list = this._photos().slice();
+      for (let i = list.length - 1; i > 0; i--) {
         const j = (Math.random() * (i + 1)) | 0;
-        [this._order[i], this._order[j]] = [this._order[j], this._order[i]];
+        [list[i], list[j]] = [list[j], list[i]];
       }
+      this._pool = list;
+      this._cursor = 0;
+
+      // cols + 1: the spare is what occupies the gap opening on the right
+      this._belt = [];
+      for (let c = 0; c <= cols; c++) this._belt.push(this._makeCol(rows, c));
+      this._belt.forEach(col => this._grid.appendChild(col.el));
+      this._belt.forEach(col => this._fill(col));
     }
 
-    /** Crossfade tile `t` to `src` on its idle layer. */
-    _show(t, i, src) {
-      const next = t.imgs[1 - t.cur];
-      if (next.getAttribute('src') === src) return;
-      const onLoad = () => {
-        next.removeEventListener('load', onLoad);
-        next.classList.add('on');
-        t.imgs[t.cur].classList.remove('on');
-        t.cur = 1 - t.cur;
-      };
-      next.addEventListener('load', onLoad);
-      next.setAttribute('src', src);
+    _makeCol(rows, pos) {
+      const el = document.createElement('div');
+      el.className = 'col';
+      const tiles = [];
+      for (let r = 0; r < rows; r++) {
+        const tl = document.createElement('div'); tl.className = 'tile';
+        const inner = document.createElement('div'); inner.className = 'inner';
+        const rim = document.createElement('div'); rim.className = 'rim';
+        const img = document.createElement('img');
+        img.alt = ''; img.draggable = false;
+        // NOT loading="lazy": this wall is the hero background, entirely above
+        // the fold, so lazy buys nothing and costs correctness — the deferral
+        // is driven by intersection observation, which doesn't run when the
+        // page isn't being painted, leaving every tile permanently blank.
+        img.decoding = 'async';
+        img.addEventListener('load', () => img.classList.add('on'));
+        // A file that isn't in the repo yet just leaves the tile empty, which
+        // still takes part in the sweep — the wall works unfilled.
+        img.addEventListener('error', () => img.classList.remove('on'));
+        inner.appendChild(img);
+        tl.appendChild(inner); tl.appendChild(rim);
+        el.appendChild(tl);
+        const t = { el: tl, rim, img, src: null, row: r, cy: (r + .5) / rows, cx: 0, lit: -1 };
+        tiles.push(t); this._tiles.push(t);
+      }
+      return { el, tiles, pos };
+    }
+
+    /**
+     * Next photo that none of the cell's already-placed neighbours is using.
+     * Walks the shuffled pool from a rotating cursor, so the choice stays
+     * varied rather than always falling back to the same few files.
+     */
+    _pick(banned) {
+      const p = this._pool;
+      if (!p.length) return null;
+      for (let k = 0; k < p.length; k++) {
+        const u = p[(this._cursor + k) % p.length];
+        if (!banned.has(u)) { this._cursor = (this._cursor + k + 1) % p.length; return u; }
+      }
+      const u = p[this._cursor % p.length];          // pool smaller than the ban set
+      this._cursor = (this._cursor + 1) % p.length;
+      return u;
+    }
+
+    /**
+     * Fill a column, keeping duplicates apart: a tile may not repeat the photo
+     * directly above it, nor the one level with it in EITHER neighbouring
+     * column. Checking both sides (rather than just the one the belt happens
+     * to recycle away from) keeps this correct whichever way the belt runs.
+     * The tile below is not banned — it is assigned next, and bans this one.
+     */
+    _fill(col) {
+      const i = this._belt.indexOf(col);
+      const left = this._belt[i - 1], right = this._belt[i + 1];
+      col.tiles.forEach((t, r) => {
+        const banned = new Set();
+        if (r > 0) banned.add(col.tiles[r - 1].src);
+        if (left) banned.add(left.tiles[r].src);
+        if (right) banned.add(right.tiles[r].src);
+        banned.delete(null);
+        const u = this._pick(banned);
+        if (!u || u === t.src) return;
+        t.src = u;
+        t.img.classList.remove('on');
+        t.img.setAttribute('src', u);
+      });
+    }
+
+    /** Move the right-most column round to the front of the belt and refill
+     *  it. Both the position it leaves and the one it arrives at are off
+     *  screen, so the wrap is never visible. */
+    _recycle() {
+      const col = this._belt.pop();
+      this._belt.unshift(col);
+      this._grid.insertBefore(col.el, this._grid.firstChild);
+      this._belt.forEach((c, i) => { c.pos = i; });
+      this._fill(col);
+    }
+
+    /** Column geometry follows the host's width; recompute only when it moves. */
+    _measure(w) {
+      if (w === this._w) return;
+      this._w = w;
+      this._colW = Math.max(1, (w - (this._nCols - 1) * GAPPX) / this._nCols);
+      for (const col of this._belt) col.el.style.width = this._colW + 'px';
     }
 
     /**
@@ -220,16 +294,26 @@
       const r = this.getBoundingClientRect();
       if (r.width <= 0 || r.bottom < -200 || r.top > innerHeight + 200) return;
 
-      // slideshow tick — one tile per SWAP_MS, in shuffled order
-      const list = this._photos();
-      if (list.length > 1 && now - this._lastSwap > SWAP_MS) {
-        this._lastSwap = now;
-        const i = this._order[this._swapCursor % this._order.length];
-        this._swapCursor++;
-        const t = this._tiles[i];
-        t.round++;
-        // stride of 7 keeps neighbours from landing on the same photo
-        this._show(t, i, list[(i + t.round * 7) % list.length]);
+      // advance the belt, recycling any column that has cleared the left edge
+      this._measure(r.width);
+      const step = this._colW + GAPPX;
+      // Clamped at BOTH ends. The upper clamp stops a backgrounded tab from
+      // teleporting the belt on resume; the lower one stops a `now` that ever
+      // goes backwards from driving the offset negative, which the modulo
+      // below cannot pull back — the belt would slide away and never return.
+      const dt = Math.max(0, Math.min(MAX_DT, this._lastNow ? now - this._lastNow : 0));
+      this._lastNow = now;
+      this._offset += dt * (step / PAN_MS);
+      while (this._offset >= step) { this._offset -= step; this._recycle(); }
+      // The belt travels RIGHT, so it sits one column further left than the
+      // frame and closes that gap as it goes; the spare column is the one
+      // waiting off the left edge, and columns leave past the right one.
+      this._grid.style.transform = `translateX(${(this._offset - step).toFixed(2)}px)`;
+      // every tile's horizontal position now moves, so the sweep and cursor
+      // light have to read it fresh rather than from a value fixed at build
+      for (const col of this._belt) {
+        const cx = (col.pos * step + this._offset - step + this._colW / 2) / r.width;
+        for (const t of col.tiles) t.cx = cx;
       }
 
       // sweep front: -0.35 → 1.35 during SWEEP, then parked off-grid

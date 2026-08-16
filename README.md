@@ -15,7 +15,7 @@ index.html            page markup + the page controller:
 js/theme.js           light/dark switch — runs in <head>, before first paint
 js/photos.js          THE PHOTO LIST. The one file you edit to change the
                       hero mosaic pool
-js/mosaic.js          <photo-mosaic> — the hero wall: slideshow, light
+js/mosaic.js          <photo-mosaic> — the hero wall: panning belt, light
                       sweep, cursor light
 js/photo-slot.js      <photo-slot> — read-only image frame (flags, card logos)
 js/globe.js           the hero globe: projection math, coastlines, flight
@@ -24,6 +24,7 @@ js/terminal.js        terminal command table — add commands here
 js/support.js         rendering runtime — do not edit
 assets/photos/        your photos (see the README in there)
 assets/logos/         company / school marks (see the README in there)
+assets/thumbs/        log-card thumbnails (see the README in there)
 assets/font-awesome/  icons (socials, resume download, scroll hints)
 js/image-slot.js      UNUSED — the old drag-and-drop authoring component.
                       Nothing loads it any more; safe to delete
@@ -49,18 +50,46 @@ Three places take images:
 | hero mosaic | the `mosaic` list in `js/photos.js` |
 | city flags         | `assets/flags/` — see the README there              |
 | company logos | `src` on the six `<photo-slot class="jos-logo">`s in card headers |
+| log thumbnails | `src` on the `<photo-slot>` inside each `.jos-log-shot` |
 
 Drop the files into `assets/photos/` and `assets/logos/` — those folders have
 their own READMEs with the exact filenames and sizes. **A missing file
 renders a dashed placeholder showing the path it wants**, so you can add them
 one at a time without the layout ever breaking.
 
+## About saving the images
+
+The photos aren't protected and can't be. A browser has to download an image
+to display it, so by the time a visitor sees the wall the file is already on
+their disk — reachable from DevTools, the network panel, the cache, or a
+screenshot. Anything a page does about this is a speed bump, not a lock.
+
+What the site does do is remove the one-click path: the `<img>` elements in
+`<photo-mosaic>` and `<photo-slot>` carry `pointer-events:none`, so the hit
+target is the element behind them and a right-click offers the ordinary page
+menu instead of "Save image as", plus `-webkit-user-drag:none` so an image
+can't be dragged out to the desktop. This is free here because nothing on the
+wall is hover-driven — the cursor light reads the pointer's coordinates, not
+events on the tiles.
+
+Deliberately NOT done: blocking `contextmenu` across the page. It breaks
+back/forward, open-in-new-tab, copy and spellcheck for every visitor, it is
+trivially bypassed, and it announces the intent far more loudly than it
+enforces it. If the photos genuinely must not circulate, the options that
+actually work are serving them visibly watermarked, or at a resolution too low
+to be worth taking.
+
 ## The hero mosaic
 
 `<photo-mosaic>` runs three things on one number per tile per frame:
 
-- **slideshow** — one tile every ~2.3s crossfades to the next photo in the
-  pool, so the wall turns over continuously and never in lockstep
+- **pan** — the whole wall is one belt sliding steadily left→right, ~14s per
+  column, like a sheet drawn across the screen. It's built one column wider
+  than it needs and rests one column left of the frame; a column that has
+  cleared the right edge wraps round to the front and is refilled, so the pan
+  never ends and photos only ever change off-screen. Refills keep duplicates apart — a tile never repeats the photo
+  above it or the one level with it in the next column, so the same picture is
+  never visible twice side by side
 - **sweep** — a light front crosses left→right over ~5.4s, rests 1.8s, and
   comes again. It's sheared by row and bent by a slow sine, so it arrives as
   a leaning, breathing wave rather than a ruled line. A narrow bright core
@@ -74,7 +103,11 @@ Tuning constants are grouped at the top of `js/mosaic.js`: `SWEEP`/`GAP` for
 how long a pass takes and how long the wall rests between passes,
 `SHEAR`/`WAVE` for the shape of the front, `CORE`/`BODY` for its width,
 `SWEEP_MAX` for how far the sweep alone lifts a tile, `REACH` for the cursor
-radius, `SWAP_MS` for the slideshow rate.
+radius, `PAN_MS` for how long the belt takes to advance one column.
+
+Because the tiles move, each one's horizontal position is recomputed every
+frame from its column's place on the belt, not fixed at build time — the sweep
+and the cursor light both read it fresh.
 
 ## Responsive
 
@@ -251,6 +284,44 @@ body to a 68-character unbroken string and confirm `scrollWidth` never exceeds
 the whole SVG route — the stacked mobile layout has no curve to label, and each
 card names its own city in its window title.
 
+## Log cards
+
+The two cards under `// logs — projects` take the window metaphor literally:
+the thumbnail **is** the window's content pane, so the order is title bar →
+screenshot → copy → action bar, which is where a real app puts each of them.
+
+```
+.jos-log         the card — a flex column, so the footer can sink
+.jos-log-shot    16:10 thumbnail pane, full-bleed under the title bar
+.jos-log-body    h3 + blurb
+.jos-log-foot    action bar; margin-top:auto pins it to the bottom
+.jos-log-cta     the button — résumé-style pill, prefixed with a `$` prompt
+```
+
+Four things worth knowing:
+
+- **`margin-top:auto` on the footer is what aligns the two CTAs.** The blurbs
+  are different lengths; without it each button sits wherever its own text
+  ends and the row looks broken. Verified: both CTAs land on the same y.
+- **The rest state greys the thumbnail** (`grayscale(.55)`, 82% opacity) and
+  hover clears it — the same greyscale→colour reveal the card logos use. The
+  filter sits on the `<photo-slot>`, **not** on `.jos-log-shot`, or it would
+  desaturate the accent sweep painted over it too.
+- **The sweep is an `animation`, not a `transition`.** `josSweep` runs the
+  mosaic's light front across the shot once on hover-*in*; a transition would
+  sweep back out again on hover-out, which reads as a glitch. The
+  reduced-motion block at the foot of the sheet already neutralises it.
+- **These cards hover in CSS, not via `style-hover`.** Three things move on
+  one hover (border, thumbnail, sweep) and two need a pseudo-element, so
+  splitting it across both mechanisms would be worse than picking one.
+
+A missing thumbnail renders `<photo-slot>`'s dashed placeholder at the right
+size, captioned with the path it wants — the section ships before the images
+do. Sizing rules and the filename table are in `assets/thumbs/README.md`.
+
+Past three cards the flex row gets too narrow; give `.jos-logs` a wrap or a
+grid at that point.
+
 ## Theming
 
 Every colour goes through CSS custom properties defined in one place — the
@@ -267,8 +338,19 @@ To reskin, edit those two token blocks and nothing else.
 
 ## Editing guide
 
-- **Resume link** — search `YOUR_RESUME_LINK` in `index.html` (2 places:
-  status bar + contact section) and paste your Google Drive share URL.
+- **Resume link** — 2 places in `index.html` (status bar + contact section).
+  Use Drive's **direct-download** form, `uc?export=download&id=FILE_ID`, not
+  the `/view?usp=sharing` URL Drive hands you — that one opens its preview
+  page instead of downloading. Take `FILE_ID` from the share URL. These two
+  links carry no `target="_blank"` on purpose: a download navigation would
+  leave an empty tab behind. (An `<a download>` attribute can't help — it is
+  ignored cross-origin.)
+- **Dodgeball CTA** — search `YOUR_DODGEBALL_LINK` in `index.html`. That log
+  card had no destination when it was built; the button is wired and waiting
+  on a URL. If one never exists, drop that card's `.jos-log-foot` — the
+  layout doesn't need it, it just loses the bottom bar.
+- **Log thumbnails** — drop `tellura.jpg` and `dodgeball.jpg` into
+  `assets/thumbs/` (16:10, ~1000×625, under 250KB).
 - **Copy / resume content** — the card divs in `index.html`; each has an
   OS-window header (`munich.kyrall`, `boston.bu`, …) and an `id="stop-…"`
   anchor used by the globe's "open chapter" links.

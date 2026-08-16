@@ -88,6 +88,61 @@ a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
    their size, or a long title squeezes them instead of itself. */
 .jos-card>div:first-child>span:not(.jos-win-t){flex:none}
 .jos-win-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ── log cards ──────────────────────────────────────────────────────────
+   The window metaphor taken literally: the thumbnail IS the window's
+   content pane, so the card reads as a screenshot of the thing rather than
+   a card with a picture glued on. Order is title bar → shot → copy → action
+   bar, which is where a real app puts each of them.
+
+   Unlike the timeline cards these do their hover in CSS rather than via the
+   runtime's `style-hover`, because three things move together on one hover
+   (border, thumbnail, sweep) and two of them need a pseudo-element. One
+   mechanism per element beats splitting it across both. */
+.jos-log{display:flex;flex-direction:column;flex:1;box-sizing:border-box;
+         background:rgba(var(--panel-rgb),.92);
+         border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;
+         overflow:hidden;transition:border-color .25s}
+.jos-log:hover{border-color:rgba(var(--accent-rgb),.5)}
+/* 16:10 rather than a fixed height: the two cards sit in a flex row, so a
+   px height would stop the shot scaling with the column it's in. */
+.jos-log-shot{position:relative;aspect-ratio:16/10;overflow:hidden;
+              border-bottom:1px solid rgba(var(--hair-rgb),.07)}
+/* <photo-slot> sizes itself to its parent, so pin it rather than relying on
+   height:100% resolving against an aspect-ratio box. The greyscale rest
+   state lives HERE and not on the wrapper, or it would also desaturate the
+   accent sweep painted over it. Same greying-out the card logos use. */
+.jos-log-shot>photo-slot{position:absolute;inset:0;
+              filter:grayscale(.55);opacity:.82;
+              transition:filter .45s,opacity .45s}
+.jos-log:hover .jos-log-shot>photo-slot{filter:grayscale(0);opacity:1}
+/* The mosaic's light front, at card scale — a narrow bright core with a wide
+   soft glow trailing it. An animation, not a transition, so it passes ONCE
+   on hover-in instead of sweeping back out again on hover-out. (The
+   reduced-motion block at the foot of this sheet already neutralises it.) */
+.jos-log-shot::after{content:'';position:absolute;inset:0;pointer-events:none;
+  transform:translateX(-100%);
+  background:linear-gradient(105deg,transparent 30%,
+    rgba(var(--accent-rgb),.05) 40%,rgba(var(--accent-rgb),.14) 47%,
+    rgba(var(--accent-soft-rgb),.32) 50%,
+    rgba(var(--accent-rgb),.06) 54%,transparent 64%)}
+.jos-log:hover .jos-log-shot::after{animation:josSweep .9s ease-out}
+@keyframes josSweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+/* margin-top:auto on the action bar is what keeps the two CTAs on one line
+   across the row when the blurbs are different lengths. */
+.jos-log-body{padding:12px 14px;display:flex;flex-direction:column;gap:5px}
+.jos-log-foot{margin-top:auto;display:flex;align-items:center;gap:10px;
+              padding:10px 14px;border-top:1px solid rgba(var(--hair-rgb),.07)}
+/* Same pill as the résumé button, with the shell's prompt in front of it —
+   the terminal's voice without gambling on whether a bare `$ open` reads as
+   something you can click. */
+.jos-log-cta{display:inline-flex;align-items:center;gap:7px;
+             font-family:'JetBrains Mono',monospace;font-size:11.5px;
+             color:var(--accent);border:1px solid rgba(var(--accent-rgb),.35);
+             border-radius:6px;padding:5px 11px;
+             transition:background .2s,border-color .2s}
+.jos-log-cta:hover{color:var(--accent);background:rgba(var(--accent-rgb),.12);
+                   border-color:rgba(var(--accent-rgb),.55)}
+.jos-log-cta .jos-log-p{color:rgba(var(--ink-rgb),.4)}
 /* Leaves — the small cards branching off a node. They carry the same
    affordances as a full stop: the cursor ring locks on (data-hot on the
    element), the border lifts on hover, and the logo colourizes (.jos-card).
@@ -231,8 +286,13 @@ a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
     <a data-hot href="#story" onClick="{{ nav }}" style="color:rgba(var(--ink-rgb),.7)" style-hover="color:var(--accent)">./story</a>
     <a data-hot href="#logs" onClick="{{ nav }}" style="color:rgba(var(--ink-rgb),.7)" style-hover="color:var(--accent)">./logs</a>
     <a data-hot href="#contact" onClick="{{ nav }}" style="color:rgba(var(--ink-rgb),.7)" style-hover="color:var(--accent)">./contact</a>
-    <!-- resume — REPLACE href with your Google Drive share link (both this one and the contact-section copy) -->
-    <a data-hot href="https://drive.google.com/YOUR_RESUME_LINK" target="_blank" style="display:flex;align-items:center;gap:7px;color:var(--accent);border:1px solid rgba(var(--accent-rgb),.35);border-radius:6px;padding:2px 10px;margin:-4px 0" style-hover="background:rgba(var(--accent-rgb),.12)"><i class="fa fa-download"></i><span class="jos-lbl">resume</span></a>
+    <!-- resume — Google Drive DIRECT-DOWNLOAD form (uc?export=download&id=FILE_ID).
+         The /view?usp=sharing link Drive gives you opens its preview page
+         instead of downloading. No target="_blank": a download navigation
+         would leave an empty tab behind. The `download` attribute cannot
+         help here — it is ignored cross-origin. Update BOTH copies (status
+         bar + contact section) if the file changes. -->
+    <a data-hot href="https://drive.google.com/uc?export=download&amp;id=1S3oLDxYHcvbm6HCQfO0tpHxvO27hvsWp" style="display:flex;align-items:center;gap:7px;color:var(--accent);border:1px solid rgba(var(--accent-rgb),.35);border-radius:6px;padding:2px 10px;margin:-4px 0" style-hover="background:rgba(var(--accent-rgb),.12)"><i class="fa fa-download"></i><span class="jos-lbl">resume</span></a>
   </nav>
   <span style="margin-left:auto;display:flex;align-items:center;gap:12px">
     <span class="jos-next" style="color:rgba(var(--ink-rgb),.45)">MUNICH 48.1372°N 11.5756°E</span>
@@ -420,13 +480,18 @@ a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
 <section id="logs" data-screen-label="Logs" class="jos-wide" style="width:1200px;margin:0 auto;padding:70px 0 20px;position:relative;z-index:2">
   <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);letter-spacing:.08em">// logs — projects</span>
   <div class="jos-logs" style="display:flex;gap:28px;margin-top:20px">
-    <div class="jos-card" data-fly=".8" data-hot style="flex:1;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.5)">
+    <div class="jos-card jos-log" data-fly=".8" data-hot>
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-win-t" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">tellura.pub</span><span class="jos-win-d" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">May 2021</span></div>
-      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">Published physics research</h3><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">How a guitar's pickup configuration shapes tonal quality — FFT analysis meets LC-circuit theory. <a href="https://issuu.com/tellura/docs/issue2-combined_rearranged" target="_blank">Tellura, 1(2), 8–29 ↗</a></p></div>
+      <div class="jos-log-shot"><photo-slot src="./assets/thumbs/tellura.jpg" radius="0" label="thumbs/tellura.jpg"></photo-slot></div>
+      <div class="jos-log-body"><h3 style="margin:0;font-size:15px;font-weight:600">Published physics research</h3><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">How a guitar's pickup configuration shapes tonal quality — FFT analysis meets LC-circuit theory. Tellura, 1(2), 8–29.</p></div>
+      <div class="jos-log-foot"><a class="jos-log-cta" data-hot href="https://issuu.com/tellura/docs/issue2-combined_rearranged" target="_blank" rel="noopener noreferrer"><span class="jos-log-p">$</span>read paper ↗</a></div>
     </div>
-    <div class="jos-card" data-fly=".8" data-hot style="flex:1;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.5)">
+    <div class="jos-card jos-log" data-fly=".8" data-hot>
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-win-t" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">tke.dodgeball</span><span class="jos-win-d" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">Mar 2025</span></div>
-      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">Founded a charity dodgeball tournament</h3><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">BU's biggest Greek-life philanthropy event of 2025 — $6,000 for St. Jude, 200+ attendees, 14 teams, sponsors from the Celtics to Red Bull.</p></div>
+      <div class="jos-log-shot"><photo-slot src="./assets/thumbs/dodgeball.jpg" radius="0" label="thumbs/dodgeball.jpg"></photo-slot></div>
+      <div class="jos-log-body"><h3 style="margin:0;font-size:15px;font-weight:600">Founded a charity dodgeball tournament</h3><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">BU's biggest Greek-life philanthropy event of 2025 — $6,000 for St. Jude, 200+ attendees, 14 teams, sponsors from the Celtics to Red Bull.</p></div>
+      <!-- no destination for this one yet — REPLACE the href, same as YOUR_RESUME_LINK -->
+      <div class="jos-log-foot"><a class="jos-log-cta" data-hot href="YOUR_DODGEBALL_LINK" target="_blank" rel="noopener noreferrer"><span class="jos-log-p">$</span>view recap ↗</a></div>
     </div>
   </div>
 </section>
@@ -435,7 +500,7 @@ a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
 <section id="contact" data-screen-label="Contact" style="padding:110px 0 50px;text-align:center;position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:18px">
   <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);letter-spacing:.08em">// open a socket</span>
   <a data-fly=".8" data-hot href="mailto:jackedelist@gmail.com" style="display:inline-block;font-size:clamp(19px,5.4vw,54px);font-weight:600;letter-spacing:-.02em;color:var(--ink)" style-hover="color:var(--accent)">jack.edelist@gmail.com</a>
-  <a data-fly="1" data-hot href="https://drive.google.com/YOUR_RESUME_LINK" target="_blank" style="display:flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);border:1px solid rgba(var(--accent-rgb),.35);border-radius:8px;padding:9px 18px" style-hover="background:rgba(var(--accent-rgb),.12)"><i class="fa fa-download"></i>download resume.pdf</a>
+  <a data-fly="1" data-hot href="https://drive.google.com/uc?export=download&amp;id=1S3oLDxYHcvbm6HCQfO0tpHxvO27hvsWp" style="display:flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);border:1px solid rgba(var(--accent-rgb),.35);border-radius:8px;padding:9px 18px" style-hover="background:rgba(var(--accent-rgb),.12)"><i class="fa fa-download"></i>download resume.pdf</a>
   <div data-fly="1.15" style="display:flex;gap:22px;font-size:20px">
     <a data-hot href="https://www.linkedin.com/in/jack-edelist" target="_blank"><i class="fa fa-linkedin"></i></a>
     <a data-hot href="https://www.github.com/edelist" target="_blank"><i class="fa fa-github"></i></a>
