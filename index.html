@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- theme must resolve before first paint, so it loads here rather than in
+     <helmet> (which the runtime injects later) — otherwise a light-mode
+     visitor gets a dark flash on every load -->
+<script src="./js/theme.js"></script>
+<!-- rendering runtime — do not edit -->
+<script src="./js/support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./assets/font-awesome/css/font-awesome.min.css">
+<script src="./js/photos.js"></script>
+<script src="./js/photo-slot.js"></script>
+<script src="./js/mosaic.js"></script>
+<style>
+/* ── theme tokens ───────────────────────────────────────────────────────
+   Every colour in this page goes through these, so the light/dark switch
+   is one attribute on <html> (set by js/theme.js before first paint).
+   The -rgb tokens hold bare "r,g,b" triplets so the markup can keep its
+   per-use alpha: rgba(var(--ink-rgb),.45). js/globe.js reads --accent-rgb
+   and --ink-rgb the same way to paint the canvas.
+     --bg         page background            --panel-rgb  card/window fill
+     --ink        body text                  --hair-rgb   hairlines, borders
+     --accent     brand blue                 --shade-rgb  scrims over photos
+     --node       unlit timeline node fill   --shadow     light-mode card lift
+     --mosaic-rest / --mosaic-peak  hero wall opacity, unlit → fully lit
+   To reskin the site, edit these two blocks and nothing else. */
+:root{
+  --bg:#08090c;              --bg-rgb:8,9,12;
+  --panel-rgb:15,17,21;
+  --ink:#e9edf2;             --ink-rgb:233,237,242;
+  --accent:#79b0ff;          --accent-rgb:121,176,255;
+  --accent-soft:#adceff;     --accent-soft-rgb:173,206,255;
+  --hair-rgb:255,255,255;
+  --shade-rgb:8,9,12;
+  --node:#0e1013;
+  --shadow:none;
+  --mosaic-rest:.14;         --mosaic-peak:.92;
+  color-scheme:dark;
+}
+[data-theme="light"]{
+  --bg:#eceef3;              --bg-rgb:236,238,243;
+  --panel-rgb:255,255,255;
+  --ink:#14181f;             --ink-rgb:20,24,31;
+  --accent:#2a63c4;          --accent-rgb:42,99,196;
+  --accent-soft:#17408a;     --accent-soft-rgb:23,64,138;
+  --hair-rgb:20,24,31;
+  --shade-rgb:236,238,243;
+  --node:#ffffff;
+  /* light panels need a real edge; dark ones float on their own borders */
+  --shadow:0 1px 2px rgba(20,24,31,.06),0 8px 24px rgba(20,24,31,.05);
+  /* dimmed photos wash out against a light page, so the wall sits back further */
+  --mosaic-rest:.09;         --mosaic-peak:.78;
+  color-scheme:light;
+}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Space Grotesk',sans-serif}
+body.jos-cursor,body.jos-cursor *{cursor:none!important}
+a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
+::selection{background:rgba(var(--accent-rgb),.3)}
+@keyframes josBlink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes josDrag{0%,100%{transform:translateX(-5px)}50%{transform:translateX(5px)}}
+@keyframes josPulse{0%,100%{transform:translateY(0);opacity:.55}50%{transform:translateY(6px);opacity:1}}
+/* every OS-window card: picks up the light-mode lift automatically */
+.jos-card{box-shadow:var(--shadow)}
+/* company logos in card headers — grey until you hover the card they sit in */
+/* the wrapper carries the sizing + treatment: React passes className through
+   to plain elements but not to custom ones, so <photo-slot> stays classless */
+.jos-logo{display:block;position:relative;width:15px;height:15px;flex:none;
+          filter:grayscale(1);opacity:.6;transition:filter .3s,opacity .3s}
+.jos-card:hover .jos-logo{filter:grayscale(0);opacity:1}
+/* theme toggle in the status bar */
+.jos-theme{display:flex;align-items:center;gap:6px;background:none;font:inherit;
+           color:rgba(var(--ink-rgb),.55);border:1px solid rgba(var(--hair-rgb),.12);
+           border-radius:6px;padding:2px 9px;margin:-3px 0;line-height:1.5;
+           transition:color .2s,border-color .2s,background .2s}
+.jos-theme:hover{color:var(--accent);border-color:rgba(var(--accent-rgb),.4);
+                 background:rgba(var(--accent-rgb),.1)}
+/* terminal scrollback. These are classes, not inline colours, because a
+   {{ }} expression inside a style attribute is not parseable CSS and every
+   editor's CSS language server flags it. */
+.jos-echo{color:rgba(var(--ink-rgb),.4)}
+.jos-out{color:var(--accent-soft)}
+.jos-theme span{display:flex;align-items:center;gap:6px}
+/* the two faces must out-specify `.jos-theme span` above, hence the descendant form */
+.jos-theme .jos-when-light{display:none}
+[data-theme="light"] .jos-theme .jos-when-dark{display:none}
+[data-theme="light"] .jos-theme .jos-when-light{display:flex}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms!important;animation-iteration-count:1!important}
+}
+
+/* ── responsive ─────────────────────────────────────────────────────────
+   Two layouts, one breakpoint.
+
+   ABOVE 1100px the flight path keeps its designed geometry: cards are
+   absolutely positioned in a 1200×1860 stage that shares coordinates with
+   the SVG route. Between 1100 and 1260 the stage is scaled down as a whole
+   by layoutStage() in the controller, so the composition survives instead
+   of reflowing into nonsense. (updateScroll() divides by that scale when it
+   maps viewport-y onto the path.)
+
+   BELOW 1100px the geometry can't hold — a 1200px composition at phone
+   width is either illegible or a horizontal scroll. So the stage becomes a
+   plain flex column: the SVG route and its coordinate labels are dropped,
+   a single accent rail down the left carries the "path" idea, and every
+   block is re-sorted newest→oldest with [data-m] (DOM order is oldest
+   first, which is right for the drawn route and wrong for a column). */
+.jos-wide{max-width:100%;box-sizing:border-box}
+.jos-stage{transform-origin:top center}
+
+@media (max-width:1259px){
+  .jos-wide{width:calc(100vw - 32px)!important}
+}
+
+@media (max-width:1100px){
+  .jos-stage{width:100%!important;height:auto!important;transform:none!important;
+             display:flex;flex-direction:column;gap:14px;
+             padding:4px 0 4px 26px;box-sizing:border-box}
+  /* the drawn route and its lat/long callouts are geometry-bound: they mean
+     nothing once the cards stop sitting where the path put them */
+  .jos-stage>svg,.jos-stage>span{display:none}
+  .jos-stage::before{content:'';position:absolute;left:6px;top:10px;bottom:10px;
+    width:1px;background:linear-gradient(180deg,var(--accent),rgba(var(--accent-rgb),.12))}
+  .jos-stage>div{position:static!important;left:auto!important;top:auto!important;
+                 width:auto!important;max-width:100%;box-sizing:border-box}
+  .jos-stage>div[data-m]{margin:0}
+  [data-m="1"]{order:1}   [data-m="2"]{order:2}   [data-m="3"]{order:3}
+  [data-m="4"]{order:4}   [data-m="5"]{order:5}   [data-m="6"]{order:6}
+  [data-m="7"]{order:7}   [data-m="8"]{order:8}   [data-m="9"]{order:9}
+  [data-m="10"]{order:10} [data-m="11"]{order:11} [data-m="12"]{order:12}
+  [data-m="13"]{order:13} [data-m="14"]{order:14} [data-m="15"]{order:15}
+  [data-m="16"]{order:16} [data-m="17"]{order:17}
+  /* polaroids keep their authored tilt (data-fly-rot) but not the full-bleed
+     width the rule above would give them — they should read as a photo laid
+     on the column, not another card */
+  .jos-stage>div[data-m="2"],.jos-stage>div[data-m="13"],.jos-stage>div[data-m="16"]{
+    align-self:flex-start;width:max-content!important}
+  .jos-logs{flex-direction:column;gap:16px}
+  .jos-hud{position:static!important;margin:0!important;width:min(320px,90vw)!important}
+}
+
+@media (max-width:820px){
+  .jos-bar{gap:12px!important;padding:8px 12px!important;font-size:11px!important}
+  .jos-bar nav{gap:14px!important}
+  .jos-next{display:none}
+}
+
+@media (max-width:560px){
+  /* at this width the bar is the only thing competing with the hero, so it
+     sheds everything that isn't a destination: version, resume wordmark,
+     theme label. The clock stays — it's the "where I am" of the whole site. */
+  .jos-ver,.jos-lbl{display:none}
+  .jos-bar{gap:9px!important;padding:7px 10px!important}
+  .jos-bar nav{gap:10px!important}
+  .jos-theme{padding:2px 6px}
+  .jos-theme span{gap:0;font-size:0}
+  .jos-theme span i{font-size:12px}
+  .jos-stage{padding-left:20px}
+  .jos-stage::before{left:4px}
+}
+
+@media (max-width:430px){
+  /* the bar is 5–15px over on the narrowest phones; type and gaps give it
+     back without dropping a destination */
+  .jos-bar{font-size:10px!important;gap:7px!important;padding:7px 8px!important}
+  .jos-bar nav{gap:8px!important}
+  .jos-caret{display:none}
+}
+</style>
+</helmet>
+<div style="overflow-x:hidden;position:relative">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#08090c"></rect><circle cx="50" cy="50" r="22" fill="none" stroke="#79b0ff" stroke-width="2"></circle><ellipse cx="50" cy="50" rx="10" ry="22" fill="none" stroke="#79b0ff" stroke-width="1.5" opacity=".6"></ellipse><ellipse cx="50" cy="50" rx="22" ry="8" fill="none" stroke="#79b0ff" stroke-width="1.5" opacity=".6"></ellipse></svg></template>
+<div ref="{{ glowRef }}" style="position:fixed;top:0;left:0;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(var(--accent-rgb),.09),transparent 65%);pointer-events:none;z-index:1;will-change:transform"></div>
+
+<!-- status bar — fixed OS chrome: brand · nav · Munich clock -->
+<div data-screen-label="Status bar" class="jos-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;gap:22px;padding:9px 22px;background:rgba(var(--shade-rgb),.72);backdrop-filter:blur(14px);border-bottom:1px solid rgba(var(--hair-rgb),.07);font-family:'JetBrains Mono',monospace;font-size:12px">
+  <span style="display:flex;gap:8px;align-items:baseline"><span style="color:var(--accent);font-weight:500">~/jack</span><span class="jos-ver" style="color:rgba(var(--ink-rgb),.4)">v2.3</span><span class="jos-caret" style="color:var(--accent);animation:josBlink 1.1s steps(1) infinite">▌</span></span>
+  <nav style="display:flex;gap:18px">
+    <!-- onClick={{ nav }} intercepts the jump and eases there instead (see glideTo) -->
+    <a data-hot href="#story" onClick="{{ nav }}" style="color:rgba(var(--ink-rgb),.7)" style-hover="color:var(--accent)">./story</a>
+    <a data-hot href="#logs" onClick="{{ nav }}" style="color:rgba(var(--ink-rgb),.7)" style-hover="color:var(--accent)">./logs</a>
+    <a data-hot href="#contact" onClick="{{ nav }}" style="color:rgba(var(--ink-rgb),.7)" style-hover="color:var(--accent)">./contact</a>
+    <!-- resume — REPLACE href with your Google Drive share link (both this one and the contact-section copy) -->
+    <a data-hot href="https://drive.google.com/YOUR_RESUME_LINK" target="_blank" style="display:flex;align-items:center;gap:7px;color:var(--accent);border:1px solid rgba(var(--accent-rgb),.35);border-radius:6px;padding:2px 10px;margin:-4px 0" style-hover="background:rgba(var(--accent-rgb),.12)"><i class="fa fa-download"></i><span class="jos-lbl">resume</span></a>
+  </nav>
+  <span style="margin-left:auto;display:flex;align-items:center;gap:12px">
+    <span class="jos-next" style="color:rgba(var(--ink-rgb),.45)">next_stop: MUC 48.1372°N 11.5756°E</span>
+    <!-- light/dark. Both faces are in the DOM and CSS shows the one matching
+         [data-theme] on <html>, so the button always advertises the mode it
+         would switch you TO and can never fall out of sync with the page. -->
+    <button data-hot class="jos-theme" onClick="{{ toggleTheme }}" title="Switch theme" aria-label="Switch colour theme"><span class="jos-when-dark"><i class="fa fa-sun-o"></i>light</span><span class="jos-when-light"><i class="fa fa-moon-o"></i>dark</span></button>
+    <span style="color:var(--accent)">{{ clock }}</span>
+  </span>
+</div>
+
+<!-- hero — name, interactive globe (js/globe.js), typeable shell (js/terminal.js), socials -->
+<!-- Padding and gap are vh-relative on purpose: they are the budget the
+     globe is competing with. layoutHero() gives the globe whatever the rest
+     of this column doesn't use, so trimming the chrome on a short screen is
+     what keeps the globe large instead of everything shrinking together. -->
+<section data-screen-label="Hero" ref="{{ heroRef }}" style="min-height:100vh;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(7px,1.3vh,13px);padding:clamp(36px,5.2vh,56px) 0 clamp(12px,2vh,22px);position:relative;overflow:hidden;z-index:2">
+  <!-- photo mosaic — border-to-border wall behind everything (js/mosaic.js).
+       Tiles slowly crossfade through the pool in js/photos.js while a light
+       front sweeps across the grid; the cursor lights tiles the same way.
+       Read-only: there is no upload path here, for you or for a visitor —
+       photos are files in assets/photos/. -->
+  <photo-mosaic ref="{{ mosaicRef }}" cols="7" rows="4" style="position:absolute;inset:0;z-index:0"></photo-mosaic>
+  <!-- center fade so the mosaic never fights the globe/terminal -->
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 62% 58% at 50% 48%,rgba(var(--shade-rgb),.94),rgba(var(--shade-rgb),.55) 62%,rgba(var(--shade-rgb),.15));pointer-events:none;z-index:1"></div>
+  <h1 style="position:relative;z-index:2;margin:0;font-size:clamp(30px,8.6vw,56px);font-weight:700;letter-spacing:-.035em;line-height:1;text-align:center">Jack Edelist</h1>
+  <span style="position:relative;z-index:2;font-family:'JetBrains Mono',monospace;font-size:clamp(11px,3.1vw,13px);line-height:1.5;color:rgba(var(--ink-rgb),.55);max-width:92vw;text-align:center;text-wrap:balance">// engineer · founder · dj — next stop: munich</span>
+  <!-- no width/height here: js/globe.js owns both the CSS box and the retina
+       backing store, and resizes them so the hero always fits the viewport.
+       touch-action:pan-y lets a vertical swipe scroll past the globe while a
+       sideways drag still spins it. -->
+  <canvas data-hot ref="{{ heroGlobeRef }}" style="position:relative;z-index:2;display:block;touch-action:pan-y"></canvas>
+  <sc-if value="{{ hasFocus }}" hint-placeholder-val="{{ false }}">
+    <div class="jos-card jos-hud" style="position:absolute;left:50%;top:36%;margin-left:255px;z-index:3;width:212px;background:rgba(var(--panel-rgb),.96);border:1px solid rgba(var(--accent-rgb),.4);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;text-align:left;font-family:'JetBrains Mono',monospace">
+      <span style="font-size:15px;color:var(--accent);font-weight:500">{{ focusName }}</span>
+      <span style="font-size:11px;color:rgba(var(--ink-rgb),.65);line-height:1.5">{{ focusDesc }}</span>
+      <a data-hot data-center href="{{ focusHref }}" onClick="{{ nav }}" style="font-size:11px">open chapter ↓</a>
+      <span data-hot onClick="{{ releaseFocus }}" style="font-size:10px;color:rgba(var(--ink-rgb),.4)">esc · release</span>
+    </div>
+  </sc-if>
+  <div class="jos-card" data-hot onClick="{{ termClick }}" style="position:relative;z-index:2;width:min(600px,92vw);box-sizing:border-box;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.12);border-radius:10px;overflow:hidden;font-family:'JetBrains Mono',monospace;font-size:12.5px;text-align:left">
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07);background:rgba(var(--hair-rgb),.03)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span style="font-size:11px;color:rgba(var(--ink-rgb),.5)">jack@edelist:~</span></div>
+    <div style="padding:6px 14px 7px;display:flex;flex-direction:column;gap:1px">
+      <sc-for list="{{ termLines }}" as="ln" hint-placeholder-count="1">
+        <div class="{{ ln.cls }}" style="line-height:1.5">{{ ln.text }}</div>
+      </sc-for>
+      <div style="display:flex;gap:8px;align-items:center;padding-top:2px"><span style="color:var(--accent)">$</span><input ref="{{ termInRef }}" onKeyDown="{{ termKey }}" placeholder="try: where · next · help" style="flex:1;background:transparent;border:none;outline:none;color:var(--ink);font-family:'JetBrains Mono',monospace;font-size:12.5px;caret-color:var(--accent)"></div>
+    </div>
+  </div>
+  <div style="position:relative;z-index:2;display:flex;justify-content:center;gap:26px;font-size:18px">
+    <a data-hot href="https://www.linkedin.com/in/jack-edelist" target="_blank" style="color:rgba(var(--ink-rgb),.75)" style-hover="color:var(--accent)"><i class="fa fa-linkedin"></i></a>
+    <a data-hot href="https://www.github.com/edelist" target="_blank" style="color:rgba(var(--ink-rgb),.75)" style-hover="color:var(--accent)"><i class="fa fa-github"></i></a>
+    <a data-hot href="https://www.instagram.com/jack_edelist" target="_blank" style="color:rgba(var(--ink-rgb),.75)" style-hover="color:var(--accent)"><i class="fa fa-instagram"></i></a>
+  </div>
+  <div style="position:relative;z-index:2;display:flex;align-items:center;gap:34px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">
+    <span style="display:flex;align-items:center;gap:9px"><i class="fa fa-arrows-h" style="font-size:14px;color:rgba(var(--accent-rgb),.75);animation:josDrag 2.2s ease-in-out infinite"></i>globe</span>
+    <span style="display:flex;align-items:center;gap:9px"><i class="fa fa-angle-double-down" style="font-size:14px;color:rgba(var(--accent-rgb),.75);animation:josPulse 2s ease-in-out infinite"></i>fly</span>
+  </div>
+</section>
+
+<!-- flight path — reverse-chronological timeline.
+     Geometry lives in the SVG (viewBox 1200×1800): the dashed ghost route, a lit copy that
+     draws on scroll, and 8 node circles. Cards, labels and photo frames are absolutely
+     positioned divs in the same 1200px coordinate space. To add a stop: extend the path,
+     add a node circle + nodeRefN, a card div, and the node's [x,y] in the pts list below. -->
+<section id="story" data-screen-label="Flight path" ref="{{ storyRef }}" style="position:relative;z-index:2;padding-top:30px">
+  <div class="jos-wide" style="width:1200px;margin:0 auto 6px">
+    <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);letter-spacing:.08em">// flight_path — now → 2003</span>
+  </div>
+  <div class="jos-stage" ref="{{ stageRef }}" style="width:1200px;height:1860px;margin:0 auto;position:relative">
+    <svg width="1200" height="1800" viewBox="0 0 1200 1800" style="position:absolute;top:0;left:0">
+      <path d="M150,120 C400,180 650,230 820,340 C990,450 420,470 250,560 C90,650 660,720 830,830 C990,935 430,990 270,1090 C120,1185 640,1230 800,1330 C950,1425 460,1470 300,1560 C160,1640 720,1660 900,1720" style="fill:none;stroke:rgba(var(--hair-rgb),.1);stroke-width:1.5;stroke-dasharray:4 7"></path>
+      <path ref="{{ pathRef }}" d="M150,120 C400,180 650,230 820,340 C990,450 420,470 250,560 C90,650 660,720 830,830 C990,935 430,990 270,1090 C120,1185 640,1230 800,1330 C950,1425 460,1470 300,1560 C160,1640 720,1660 900,1720" style="fill:none;stroke:var(--accent);stroke-width:1.5"></path>
+      <line x1="270" y1="1090" x2="730" y2="1007" style="stroke:rgba(var(--accent-rgb),.25);stroke-width:1"></line>
+      <line x1="270" y1="1090" x2="915" y2="1044" style="stroke:rgba(var(--accent-rgb),.25);stroke-width:1"></line>
+      <line x1="270" y1="1090" x2="730" y2="1082" style="stroke:rgba(var(--accent-rgb),.25);stroke-width:1"></line>
+      <line x1="270" y1="1090" x2="915" y2="1119" style="stroke:rgba(var(--accent-rgb),.25);stroke-width:1"></line>
+      <line x1="270" y1="1090" x2="730" y2="1157" style="stroke:rgba(var(--accent-rgb),.25);stroke-width:1"></line>
+      <line x1="270" y1="1090" x2="915" y2="1194" style="stroke:rgba(var(--accent-rgb),.25);stroke-width:1"></line>
+      <circle ref="{{ nodeRef0 }}" cx="150" cy="120" r="5" style="fill:var(--node);stroke:rgba(var(--hair-rgb),.3);stroke-width:1.5;transition:fill .3s,stroke .3s"></circle>
+      <circle ref="{{ nodeRef1 }}" cx="820" cy="340" r="5" style="fill:var(--node);stroke:rgba(var(--hair-rgb),.3);stroke-width:1.5;transition:fill .3s,stroke .3s"></circle>
+      <circle ref="{{ nodeRef2 }}" cx="250" cy="560" r="5" style="fill:var(--node);stroke:rgba(var(--hair-rgb),.3);stroke-width:1.5;transition:fill .3s,stroke .3s"></circle>
+      <circle ref="{{ nodeRef3 }}" cx="830" cy="830" r="5" style="fill:var(--node);stroke:rgba(var(--hair-rgb),.3);stroke-width:1.5;transition:fill .3s,stroke .3s"></circle>
+      <circle ref="{{ nodeRef4 }}" cx="270" cy="1090" r="5" style="fill:var(--node);stroke:rgba(var(--hair-rgb),.3);stroke-width:1.5;transition:fill .3s,stroke .3s"></circle>
+      <circle ref="{{ nodeRef5 }}" cx="800" cy="1330" r="5" style="fill:var(--node);stroke:rgba(var(--hair-rgb),.3);stroke-width:1.5;transition:fill .3s,stroke .3s"></circle>
+      <circle ref="{{ nodeRef6 }}" cx="300" cy="1560" r="5" style="fill:var(--node);stroke:rgba(var(--hair-rgb),.3);stroke-width:1.5;transition:fill .3s,stroke .3s"></circle>
+      <circle ref="{{ nodeRef7 }}" cx="900" cy="1720" r="5" style="fill:var(--node);stroke:rgba(var(--hair-rgb),.3);stroke-width:1.5;transition:fill .3s,stroke .3s"></circle>
+      <g ref="{{ travelerRef }}" transform="translate(150,120)"><circle r="9" style="fill:none;stroke:rgba(var(--accent-rgb),.45);stroke-width:1"></circle><circle r="4" style="fill:var(--accent)"></circle></g>
+    </svg>
+    <span style="position:absolute;left:95px;top:140px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">MUC 48.14°N — NOW</span>
+    <span style="position:absolute;left:840px;top:356px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">BOS 42.36°N</span>
+    <span style="position:absolute;left:185px;top:578px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">BOS 42.36°N</span>
+    <span style="position:absolute;left:850px;top:845px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">DTW 42.33°N</span>
+    <span style="position:absolute;left:825px;top:1345px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">YYZ 43.65°N</span>
+    <span style="position:absolute;left:245px;top:1580px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">HKG 22.32°N</span>
+    <span style="position:absolute;left:925px;top:1712px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">NYC 40.71°N</span>
+
+    <div data-m="17" class="jos-card" id="stop-nyc" data-fly="1" data-hot style="position:absolute;left:600px;top:1660px;width:270px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">nyc.born</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">2003</span></div>
+      <p style="margin:0;padding:0 14px 12px;font-size:13px;line-height:1.5;color:rgba(var(--ink-rgb),.68)">Born in New York City.</p>
+    </div>
+
+    <div data-m="15" class="jos-card" id="stop-hkg" data-fly="1" data-hot style="position:absolute;left:360px;top:1492px;width:320px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">hongkong.home</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">2003–2017</span></div>
+      <p style="margin:0;padding:0 14px 12px;font-size:13px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">Grew up in Hong Kong — a childhood measured in flights.</p>
+    </div>
+
+    <div data-m="14" class="jos-card" id="stop-yyz" data-fly="1" data-hot style="position:absolute;left:450px;top:1262px;width:330px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-logo"><photo-slot src="./assets/logos/upper-canada-college.svg" fit="contain" radius="2" label=""></photo-slot></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">toronto.ucc</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">2017–2021</span></div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">High school — IB Diploma, 41 pts</h3><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">Upper Canada College</span><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68)">Engineering, lead guitar and rugby all booted here.</p></div>
+    </div>
+
+    <div data-m="6" class="jos-card" id="stop-bos" data-fly="1" data-hot style="position:absolute;left:330px;top:1000px;width:380px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-logo"><photo-slot src="./assets/logos/boston-university.svg" fit="contain" radius="2" label=""></photo-slot></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">boston.bu</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">2021–2025</span></div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">BS Computer Engineering, ML concentration</h3><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">Boston University</span><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68)">Four years, six parallel threads →</p></div>
+    </div>
+
+    <div data-m="7" data-fly=".55" style="position:absolute;left:730px;top:985px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">boas.lab</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">fNIRS · ConvLSTM research</span></div>
+    <div data-m="8" data-fly=".55" style="position:absolute;left:915px;top:1022px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">fortune.dj</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">resident @ big night</span></div>
+    <div data-m="9" data-fly=".55" style="position:absolute;left:730px;top:1060px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">rugby</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">BU men's team</span></div>
+    <div data-m="10" data-fly=".55" style="position:absolute;left:915px;top:1097px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">pep.band</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">lead guitar</span></div>
+    <div data-m="11" data-fly=".55" style="position:absolute;left:730px;top:1135px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">tke</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">brotherhood · philanthropy</span></div>
+    <div data-m="12" data-fly=".55" style="position:absolute;left:915px;top:1172px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">arowhon.guitar</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">head instructor, summers</span></div>
+
+    <div data-m="5" class="jos-card" id="stop-dtw" data-fly="1" data-hot style="position:absolute;left:470px;top:762px;width:340px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-logo"><photo-slot src="./assets/logos/general-motors.svg" fit="contain" radius="2" label=""></photo-slot></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">detroit.gm</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">Jun–Aug 2023</span></div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">Software Engineering Intern — HydroTec</h3><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">General Motors</span><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">Hydrogen fuel-cell controllers: Simulink sims (66 CAN messages), dSPACE hardware-in-the-loop safety verification.</p></div>
+    </div>
+
+    <div data-m="4" class="jos-card" data-fly="1" data-hot style="position:absolute;left:310px;top:492px;width:340px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-logo"><photo-slot src="./assets/logos/red-hat.svg" fit="contain" radius="2" label=""></photo-slot></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">boston.redhat</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">Sep–Dec 2024</span></div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">Software Engineering Co-op</h3><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">Red Hat</span><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">Built Ansible Wrangler: RAG + LLM generation turning ServiceNow incidents into deployed Ansible playbooks.</p></div>
+    </div>
+
+    <div data-m="3" class="jos-card" data-fly="1" data-hot style="position:absolute;left:450px;top:275px;width:350px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-logo"><photo-slot src="./assets/logos/roomform.svg" fit="contain" radius="2" label=""></photo-slot></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">boston.roomform</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">May 2025 – 2026</span></div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">Co-Founder</h3><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">Roomform AI</span><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">Co-founded the accessible 3D design &amp; commerce platform — LiDAR scanning, marketplace, AI agent. Public beta; interviewed at Y Combinator.</p></div>
+    </div>
+
+    <div data-m="1" class="jos-card" id="stop-muc" data-fly="1" data-hot style="position:absolute;left:210px;top:62px;width:330px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--accent-rgb),.35);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.7)">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(var(--accent-rgb),.06)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-logo"><photo-slot src="./assets/logos/kyrall.svg" fit="contain" radius="2" label=""></photo-slot></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">munich.kyrall</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">now ● spawning</span></div>
+      <p style="margin:0;padding:10px 14px 12px;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68)">New thread starting — joining Kyrall in Munich.</p>
+    </div>
+
+    <div data-m="16" data-fly="1.3" data-fly-rot=" rotate(-3deg)" style="position:absolute;left:40px;top:1490px;filter:grayscale(1);opacity:.7;transition:filter .45s,opacity .45s;background:rgba(var(--panel-rgb),.95);border:1px solid rgba(var(--hair-rgb),.12);border-radius:8px;padding:8px 8px 6px;display:flex;flex-direction:column;gap:5px" style-hover="filter:grayscale(0);opacity:1">
+      <photo-slot src="./assets/photos/hong-kong.jpg" label="assets/photos/hong-kong.jpg" style="width:180px;height:140px"></photo-slot>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(var(--ink-rgb),.5)">hong_kong.jpg</span>
+    </div>
+    <div data-m="13" data-fly="1.3" data-fly-rot=" rotate(2deg)" style="position:absolute;left:55px;top:1035px;filter:grayscale(1);opacity:.7;transition:filter .45s,opacity .45s;background:rgba(var(--panel-rgb),.95);border:1px solid rgba(var(--hair-rgb),.12);border-radius:8px;padding:8px 8px 6px;display:flex;flex-direction:column;gap:5px" style-hover="filter:grayscale(0);opacity:1">
+      <photo-slot src="./assets/photos/bu-rugby.jpg" label="assets/photos/bu-rugby.jpg" style="width:180px;height:140px"></photo-slot>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(var(--ink-rgb),.5)">bu_rugby.jpg</span>
+    </div>
+    <div data-m="2" data-fly="1.3" data-fly-rot=" rotate(-2deg)" style="position:absolute;left:110px;top:265px;filter:grayscale(1);opacity:.7;transition:filter .45s,opacity .45s;background:rgba(var(--panel-rgb),.95);border:1px solid rgba(var(--hair-rgb),.12);border-radius:8px;padding:8px 8px 6px;display:flex;flex-direction:column;gap:5px" style-hover="filter:grayscale(0);opacity:1">
+      <photo-slot src="./assets/photos/fortune-dj.jpg" label="assets/photos/fortune-dj.jpg" style="width:180px;height:140px"></photo-slot>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(var(--ink-rgb),.5)">fortune_at_big_night.jpg</span>
+    </div>
+  </div>
+</section>
+
+<!-- logs — one-offs that don't fit the main thread -->
+<section id="logs" data-screen-label="Logs" class="jos-wide" style="width:1200px;margin:0 auto;padding:70px 0 20px;position:relative;z-index:2">
+  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);letter-spacing:.08em">// logs — off the main thread</span>
+  <div class="jos-logs" style="display:flex;gap:28px;margin-top:20px">
+    <div class="jos-card" data-fly=".8" data-hot style="flex:1;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.5)">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">tellura.pub</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">May 2021</span></div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">Published physics research</h3><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">How a guitar's pickup configuration shapes tonal quality — FFT analysis meets LC-circuit theory. <a href="https://issuu.com/tellura/docs/issue2-combined_rearranged" target="_blank">Tellura, 1(2), 8–29 ↗</a></p></div>
+    </div>
+    <div class="jos-card" data-fly=".8" data-hot style="flex:1;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.5)">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">tke.dodgeball</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">Mar 2025</span></div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">Founded a charity dodgeball tournament</h3><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">BU's biggest Greek-life philanthropy event of 2025 — $6,000 for St. Jude, 200+ attendees, 14 teams, sponsors from the Celtics to Red Bull.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- contact -->
+<section id="contact" data-screen-label="Contact" style="padding:110px 0 50px;text-align:center;position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:18px">
+  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);letter-spacing:.08em">// open a socket</span>
+  <a data-fly=".8" data-hot href="mailto:jackedelist@gmail.com" style="display:inline-block;font-size:clamp(19px,5.4vw,54px);font-weight:600;letter-spacing:-.02em;color:var(--ink)" style-hover="color:var(--accent)">jackedelist@gmail.com</a>
+  <a data-fly="1" data-hot href="https://drive.google.com/YOUR_RESUME_LINK" target="_blank" style="display:flex;align-items:center;gap:9px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);border:1px solid rgba(var(--accent-rgb),.35);border-radius:8px;padding:9px 18px" style-hover="background:rgba(var(--accent-rgb),.12)"><i class="fa fa-download"></i>download resume.pdf</a>
+  <div data-fly="1.15" style="display:flex;gap:22px;font-size:20px">
+    <a data-hot href="https://www.linkedin.com/in/jack-edelist" target="_blank"><i class="fa fa-linkedin"></i></a>
+    <a data-hot href="https://www.github.com/edelist" target="_blank"><i class="fa fa-github"></i></a>
+    <a data-hot href="https://www.instagram.com/jack_edelist" target="_blank"><i class="fa fa-instagram"></i></a>
+  </div>
+  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.35);margin-top:26px">© 2026 ~/jack — built from scratch</span>
+</section>
+
+<!-- custom cursor layers — positioned every frame by the script -->
+<div ref="{{ dotRef }}" style="position:fixed;top:0;left:0;width:6px;height:6px;border-radius:50%;background:var(--ink);z-index:9999;pointer-events:none;will-change:transform"></div>
+<div ref="{{ ringRef }}" style="position:fixed;top:0;left:0;width:32px;height:32px;border:1.5px solid rgba(var(--ink-rgb),.5);border-radius:50%;z-index:9999;pointer-events:none;will-change:transform"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;customCursor&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Cursor&quot;},&quot;cursorGlow&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Cursor&quot;}}">
+class Component extends DCLogic {
+  // UI state: Munich wall clock + terminal scrollback ({ text, cls } per line;
+  // cls is jos-echo for what you typed, jos-out for the reply)
+  state = {
+    clock: '--:--:--', focus: null,
+    termLines: [{ text: "~/jack shell — try 'help'", cls: 'jos-echo' }]
+  };
+  // input that cancels an in-flight glideTo()
+  glideBreak = ['wheel', 'touchstart', 'keydown'];
+  nodes = [];   // timeline node circles, lit in updateScroll() as the route draws
+  renderVals() {
+    return {
+      clock: this.state.clock,
+      toggleTheme: () => window.jackTheme && window.jackTheme.toggle(),
+      nav: e => this.nav(e),
+      dotRef: el => this.dotEl = el, ringRef: el => this.ringEl = el, glowRef: el => this.glowEl = el,
+      pathRef: el => this.pathEl = el, travelerRef: el => this.travelerEl = el, storyRef: el => this.storyEl = el,
+      heroRef: el => this.heroEl = el, heroGlobeRef: el => this.globeEl = el,
+      mosaicRef: el => this.mosaicEl = el, stageRef: el => this.stageEl = el,
+      termLines: this.state.termLines,
+      hasFocus: !!this.state.focus,
+      focusName: this.state.focus ? this.state.focus.n : '',
+      focusDesc: this.state.focus ? this.state.focus.desc : '',
+      focusHref: this.state.focus ? this.state.focus.href : '#story',
+      releaseFocus: () => this.globe && this.globe.setFocus(null),
+      termInRef: el => this.termIn = el,
+      termClick: () => this.termIn && this.termIn.focus(),
+      termKey: e => {
+        if (e.key !== 'Enter') return;
+        const v = e.target.value.trim();
+        e.target.value = '';
+        if (v) this.runCmd(v);
+      },
+      nodeRef0: el => this.nodes[0] = el, nodeRef1: el => this.nodes[1] = el, nodeRef2: el => this.nodes[2] = el,
+      nodeRef3: el => this.nodes[3] = el, nodeRef4: el => this.nodes[4] = el, nodeRef5: el => this.nodes[5] = el,
+      nodeRef6: el => this.nodes[6] = el, nodeRef7: el => this.nodes[7] = el
+    };
+  }
+  componentDidMount() {
+    // feature modules (see js/): globe rendering + terminal command table
+    // (URLs anchored to the document — imports inside the runtime resolve relative to js/ otherwise)
+    import(new URL('./js/globe.js', document.baseURI).href).then(m => {
+      this.globe = new m.GlobeRenderer(this.globeEl);
+      this.globe.onFocusChange = c => this.setState({ focus: c });   // drives the chapter HUD
+      this.layoutHero();   // the globe can only be fitted once it exists
+    });
+    import(new URL('./js/terminal.js', document.baseURI).href).then(m => { this.term = m; });
+    // custom cursor: dot / ring / background glow ease toward the pointer at different rates
+    // A coarse pointer has no resting position: parking it off-screen keeps
+    // the mosaic's cursor light and the background glow from burning a hole
+    // in the middle of the hero on a phone.
+    this.fine = !window.matchMedia || matchMedia('(pointer:fine)').matches;
+    this.mx = this.fine ? innerWidth / 2 : -1e4;
+    this.my = this.fine ? innerHeight / 2 : -1e4;
+    this.dx = this.mx; this.dy = this.my; this.rx = this.mx; this.ry = this.my;
+    this.gx = this.mx; this.gy = this.my; this.sc = 1; this.hot = false;
+    this.onMove = e => {
+      this.mx = e.clientX; this.my = e.clientY;
+      this.hot = !!(e.target && e.target.closest && e.target.closest('[data-hot]'));   // ring locks onto [data-hot]
+      if (this.globe) this.globe.pointerMove(e.clientX, e.clientY);
+    };
+    window.addEventListener('pointermove', this.onMove);
+    // A finger is a pointer that only exists while it is down. On lift there
+    // is nowhere for the cursor, the glow or the mosaic's light to be, so
+    // they are hidden and the pointer is parked off-screen — otherwise they
+    // stay burning at whatever the last touch position was.
+    this.onDown = e => {
+      if (!e || e.pointerType === 'mouse') return;
+      this.touching = true;
+      this.mx = e.clientX; this.my = e.clientY;
+      // snap the eased layers onto the finger rather than flying them in
+      this.dx = this.rx = this.gx = this.mx;
+      this.dy = this.ry = this.gy = this.my;
+      this.syncPointer();
+    };
+    this.onUp = e => {
+      if (this.globe) this.globe.endDrag();   // runs after the globe's own pointerup
+      if (!e || e.pointerType === 'mouse') return;
+      this.touching = false;
+      this.mx = -1e4; this.my = -1e4; this.hot = false;
+      if (this.globe) this.globe.pointerMove(-1e4, -1e4);
+      this.syncPointer();
+    };
+    window.addEventListener('pointerdown', this.onDown);
+    window.addEventListener('pointerup', this.onUp);
+    window.addEventListener('pointercancel', this.onUp);
+    this.onKey = e => { if (e.key === 'Escape' && this.globe) this.globe.setFocus(null); };
+    window.addEventListener('keydown', this.onKey);
+    this.onScroll = () => { this.scrollDirty = true; };
+    window.addEventListener('scroll', this.onScroll, { passive: true });
+    // one handler for both layouts; rAF-coalesced so a window drag doesn't
+    // run the hero's measure-and-fit pass on every intermediate pixel
+    this.onResize = () => {
+      if (this.resizeRaf) return;
+      this.resizeRaf = requestAnimationFrame(() => {
+        this.resizeRaf = 0;
+        this.layoutHero(); this.layoutStage();
+        this.flyEls = null;          // re-derive slide directions for the new width
+        this.scrollDirty = true;
+      });
+    };
+    window.addEventListener('resize', this.onResize);
+    this.tickClock = () => this.setState({
+      clock: new Date().toLocaleTimeString('de-DE', { timeZone: 'Europe/Berlin', hour12: false })
+    });
+    this.tickClock();
+    this.clockInt = setInterval(() => { this.tickClock(); this.scrollDirty = true; }, 1000);   // re-assert scroll transforms after the clock re-render
+    // scroll-drawn route: measure the SVG path once; find each node's fraction along it
+    if (this.pathEl) {
+      this.pathLen = this.pathEl.getTotalLength();
+      this.pathEl.style.strokeDasharray = String(this.pathLen);
+      this.pathEl.style.strokeDashoffset = String(this.pathLen);
+      const pts = [[150,120],[820,340],[250,560],[830,830],[270,1090],[800,1330],[300,1560],[900,1720]];
+      // y-lookup table: inverts "document y → fraction along the path" so the
+      // drawn tip can be pinned to a fixed viewport height (y is monotonic here)
+      this.ys = [];
+      let ymax = -1e9;
+      for (let i = 0; i <= 400; i++) {
+        ymax = Math.max(ymax, this.pathEl.getPointAtLength(this.pathLen * i / 400).y);
+        this.ys.push(ymax);
+      }
+      this.fr = pts.map(([x, y]) => {
+        let best = 0, bd = Infinity;
+        for (let i = 0; i <= 400; i++) {
+          const t = i / 400, p = this.pathEl.getPointAtLength(this.pathLen * t);
+          const d = (p.x - x) ** 2 + (p.y - y) ** 2;
+          if (d < bd) { bd = d; best = t; }
+        }
+        return best;
+      });
+    }
+    if (this.globeEl) this.globeEl.addEventListener('pointerdown', e => { e.preventDefault(); this.globe && this.globe.startDrag(e.clientX, e.clientY); });
+    this.applyProps();
+    this.layoutStage();
+    // Space Grotesk / JetBrains Mono arrive after first paint, and the hero's
+    // fixed-height parts measure differently in the fallback faces — so the
+    // globe gets re-fitted once the real fonts are in.
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => { this.layoutHero(); this.scrollDirty = true; });
+    }
+    this.scrollDirty = true;
+    // one rAF loop drives cursor easing, globe frames, and scroll updates
+    const loop = (now) => {
+      this.dx += (this.mx - this.dx) * .4; this.dy += (this.my - this.dy) * .4;
+      this.rx += (this.mx - this.rx) * .16; this.ry += (this.my - this.ry) * .16;
+      this.gx += (this.mx - this.gx) * .07; this.gy += (this.my - this.gy) * .07;
+      this.sc += ((this.hot ? 1.9 : 1) - this.sc) * .2;
+      if (this.dotEl) this.dotEl.style.transform = `translate(${this.dx - 3}px,${this.dy - 3}px)`;
+      if (this.ringEl) {
+        this.ringEl.style.transform = `translate(${this.rx - 16}px,${this.ry - 16}px) scale(${this.sc})`;
+        this.ringEl.style.borderColor = this.hot ? 'rgba(var(--accent-rgb),.9)' : 'rgba(var(--ink-rgb),.5)';
+      }
+      if (this.glowEl) this.glowEl.style.transform = `translate(${this.gx - 260}px,${this.gy - 260}px)`;
+      if (this.globe) this.globe.frame();
+      // the mosaic's sweep + cursor light share this loop and the pointer
+      // position already tracked for the custom cursor
+      if (this.mosaicEl && this.mosaicEl.frame) this.mosaicEl.frame(this.mx, this.my, now || performance.now());
+      if (this.scrollDirty) { this.scrollDirty = false; this.updateScroll(); }
+      this.raf = requestAnimationFrame(loop);
+    };
+    this.raf = requestAnimationFrame(loop);
+  }
+  componentDidUpdate() { this.applyProps(); }
+  /**
+   * Fit the hero to the viewport. The globe is the elastic part: everything
+   * else in the column (name, tagline, shell, socials, hints) has a size it
+   * needs, so we measure what that comes to with the globe collapsed and
+   * hand the globe whatever is left. That makes the hero fit at any zoom
+   * level and any window height, instead of relying on a guessed constant.
+   */
+  layoutHero() {
+    const hero = this.heroEl, cv = this.globeEl;
+    if (!hero || !cv || !this.globe) return;
+    const minH = hero.style.minHeight;
+    hero.style.minHeight = '0';           // the 100vh floor would hide the overflow
+    this.globe.setSize(120);              // collapse to the floor, not to zero,
+    const rest = hero.scrollHeight - 120; // then subtract it back out
+    hero.style.minHeight = minH;
+    const room = innerHeight - rest - 10;   // 10px so the shell border clears the fold
+    this.globe.setSize(Math.min(520, innerWidth * .86, room));
+  }
+  /**
+   * Between 1100 and 1260px the flight-path stage is scaled down whole
+   * rather than reflowed, so the composition holds. Its layout box keeps
+   * the unscaled 1200px width, so the height has to be corrected by hand or
+   * the section leaves a gap the size of the shrink.
+   */
+  layoutStage() {
+    const st = this.stageEl;
+    if (!st) return;
+    if (innerWidth <= 1100) { st.style.transform = ''; st.style.height = ''; return; }
+    const s = Math.min(1, (innerWidth - 32) / 1200);
+    st.style.transform = s < 1 ? `scale(${s})` : '';
+    st.style.height = Math.round(1860 * s) + 'px';
+  }
+  /**
+   * Click on any in-page anchor (status-bar nav, the globe's "open chapter"):
+   * cancel the browser's instant jump and fly there instead.
+   */
+  nav(e) {
+    const href = e.currentTarget && e.currentTarget.getAttribute('href');
+    if (!href || href[0] !== '#') return;
+    const el = document.querySelector(href);
+    if (!el) return;
+    e.preventDefault();
+    history.replaceState(null, '', href);   // URL stays honest, no jump
+    if (this.globe) this.globe.setFocus(null);   // the chapter HUD closes behind you
+    // [data-center] targets are single cards — land them mid-screen, where
+    // the eye already is. Section links park at the top, since a whole
+    // section centred just shows you its middle.
+    this.glideTo(el, e.currentTarget.hasAttribute('data-center'));
+  }
+  /**
+   * Ease the page to `el`, parking it clear of the fixed status bar.
+   * Duration scales with distance so a short hop isn't sluggish and a
+   * full-page flight isn't a blur. The route/card scroll animations run
+   * off the ordinary scroll event, so they play out during the flight.
+   */
+  glideTo(el, center) {
+    const OFFSET = 84;   // status bar + a little air above the target
+    const start = window.scrollY;
+    const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+    const r = el.getBoundingClientRect();
+    // A [data-fly] card is mid-slide when you click, and it will have settled
+    // by the time we arrive — so aim at where it will BE, not where it is.
+    const f = this.flyEls && this.flyEls.find(x => x.el === el);
+    const top = r.top - (f ? f.ty : 0) + start;
+    const shift = center ? Math.max(OFFSET, (innerHeight - r.height) / 2) : OFFSET;
+    const end = Math.max(0, Math.min(max, top - shift));
+    const dist = end - start;
+    this.cancelGlide();
+    if (Math.abs(dist) < 2) return;
+    const dur = Math.min(1400, Math.max(420, Math.abs(dist) * .42));
+    const t0 = performance.now();
+    // Any real input hands control straight back — a page that keeps flying
+    // after you've grabbed the wheel is the worst version of this feature.
+    this.glideStop = () => this.cancelGlide();
+    this.glideBreak.forEach(t => window.addEventListener(t, this.glideStop, { passive: true }));
+    const step = now => {
+      const q = Math.min(1, (now - t0) / dur);
+      const k = q < .5 ? 4 * q * q * q : 1 - Math.pow(-2 * q + 2, 3) / 2;   // ease-in-out cubic
+      window.scrollTo(0, start + dist * k);
+      if (q < 1) this.glideRaf = requestAnimationFrame(step);
+      else this.cancelGlide();
+    };
+    this.glideRaf = requestAnimationFrame(step);
+  }
+  cancelGlide() {
+    if (this.glideRaf) { cancelAnimationFrame(this.glideRaf); this.glideRaf = 0; }
+    if (this.glideStop) {
+      this.glideBreak.forEach(t => window.removeEventListener(t, this.glideStop));
+      this.glideStop = null;
+    }
+  }
+  /** Tweak props: customCursor / cursorGlow toggles. */
+  applyProps() {
+    this.wantCursor = this.props.customCursor ?? true;
+    this.wantGlow = this.props.cursorGlow ?? true;
+    this.syncPointer();
+  }
+  /**
+   * Show the pointer layers only while there is actually a pointer: a mouse
+   * always is one, a finger only while it is touching. cursor:none is left
+   * to fine pointers alone — on a hybrid it would hide a real mouse cursor,
+   * and on a phone there is nothing to hide.
+   */
+  syncPointer() {
+    const live = this.fine || this.touching;
+    const cur = this.wantCursor && live;
+    document.body.classList.toggle('jos-cursor', this.wantCursor && this.fine);
+    if (this.dotEl) this.dotEl.style.display = cur ? 'block' : 'none';
+    if (this.ringEl) this.ringEl.style.display = cur ? 'block' : 'none';
+    if (this.glowEl) this.glowEl.style.display = this.wantGlow && live ? 'block' : 'none';
+  }
+  componentWillUnmount() {
+    cancelAnimationFrame(this.raf); clearInterval(this.clockInt);
+    this.cancelGlide();
+    window.removeEventListener('pointermove', this.onMove);
+    window.removeEventListener('pointerdown', this.onDown);
+    window.removeEventListener('pointerup', this.onUp);
+    window.removeEventListener('pointercancel', this.onUp);
+    window.removeEventListener('keydown', this.onKey);
+    window.removeEventListener('scroll', this.onScroll);
+    window.removeEventListener('resize', this.onResize);
+    if (this.resizeRaf) cancelAnimationFrame(this.resizeRaf);
+    document.body.classList.remove('jos-cursor');
+  }
+  /** Run a shell command through js/terminal.js and append to the scrollback. */
+  runCmd(v) {
+    if (!this.term) return;   // module still loading (first ~100ms)
+    const resp = this.term.respond(v);
+    if (resp === this.term.CLEAR) { this.setState({ termLines: [] }); return; }
+    const lines = [...this.state.termLines,
+      { text: '$ ' + v, cls: 'jos-echo' },   // echo
+      { text: resp, cls: 'jos-out' }];        // reply
+    this.setState({ termLines: lines.slice(-6) });      // keep the shell short
+  }
+  /** Draw the route to match scroll progress; move the traveler; light passed nodes. */
+  updateScroll() {
+    if (!this.storyEl || !this.pathEl || !this.pathLen) return;
+    const rect = this.storyEl.getBoundingClientRect();
+    const vh = window.innerHeight;
+    // pin the drawn tip to the middle of the viewport: find how far along the
+    // path the mid-screen line sits and light exactly that much
+    // The stage may be scaled (layoutStage) or the route hidden entirely
+    // (mobile column layout), so map viewport px into path units via the
+    // SVG's own rendered width rather than assuming 1:1.
+    const svgRect = this.pathEl.ownerSVGElement.getBoundingClientRect();
+    const drawn = svgRect.width > 0;
+    const scale = drawn ? svgRect.width / 1200 : 1;
+    const yT = (vh * .5 - svgRect.top) / scale;   // viewport middle in path coordinates
+    let p;
+    const ys = this.ys, N = ys.length - 1;
+    if (yT <= ys[0]) p = 0;
+    else if (yT >= ys[N]) p = 1;
+    else {
+      let lo = 0, hi = N;
+      while (hi - lo > 1) { const m = (lo + hi) >> 1; ys[m] <= yT ? lo = m : hi = m; }
+      p = (lo + (yT - ys[lo]) / (ys[hi] - ys[lo] || 1)) / N;
+    }
+    if (!drawn) p = 1;   // no route on screen: leave every node lit, skip the draw
+    this.pathEl.style.strokeDashoffset = String(this.pathLen * (1 - p));
+    if (drawn && this.travelerEl) {
+      const pt = this.pathEl.getPointAtLength(this.pathLen * p);
+      this.travelerEl.setAttribute('transform', `translate(${pt.x},${pt.y})`);
+    }
+    this.nodes.forEach((n, i) => {
+      if (!n || !this.fr) return;
+      const lit = p >= this.fr[i] - .004;
+      n.style.fill = lit ? 'var(--accent)' : 'var(--node)';
+      n.style.stroke = lit ? 'var(--accent)' : 'rgba(var(--hair-rgb),.3)';
+    });
+    // scroll reveal v2: [data-fly] elements slide in from their own side of the
+    // page (left-half from the left, right-half from the right; near-centered
+    // ones alternate), easing into place by mid-viewport.
+    // data-fly = speed multiplier · data-fly-rot = preserved authored rotation
+    if (!this.flyEls) {
+      const mid = window.innerWidth / 2;
+      this.flyEls = Array.from(document.querySelectorAll('[data-fly]')).map((el, i) => {
+        const er = el.getBoundingClientRect();          // pre-transform: built before any offsets
+        const off = er.left + er.width / 2 - mid;
+        const sign = Math.abs(off) < 60 ? (i % 2 ? 1 : -1) : (off < 0 ? -1 : 1);
+        return { el, sign, tx: 0, ty: 0,
+          sp: parseFloat(el.getAttribute('data-fly')) || 1,
+          rot: el.getAttribute('data-fly-rot') || '' };
+      });
+    }
+    const maxScroll = document.documentElement.scrollHeight - vh;
+    const atEnd = maxScroll - scrollY < 40;   // force-settle at the very bottom
+    // A 170px sideways entry needs a page wide enough to have sides. In the
+    // mobile column every card is full-bleed, so it would only shove content
+    // past the edge — there, the reveal is a short lift instead.
+    const narrow = innerWidth <= 1100;
+    const dx = narrow ? 0 : 170;
+    const dy = narrow ? 16 : 28;
+    this.flyEls.forEach(f => {
+      const base = f.el.getBoundingClientRect().top - f.ty;   // untranslated position
+      // starts entering at the fold, fully settled by ~57% viewport height
+      const q = atEnd ? 1 : Math.min(1, Math.max(0, (vh * .95 - base) / (vh * .38)));
+      const e = 1 - Math.pow(1 - q, 3);   // ease-out: fast entry, smooth landing
+      f.tx = (1 - e) * dx * f.sign * f.sp;
+      f.ty = (1 - e) * dy * f.sp;
+      f.el.style.transform = `translate(${f.tx}px,${f.ty}px)${f.rot}`;
+      // fade in while travelling; clear when settled so hover styles take over
+      f.el.style.opacity = q >= 1 ? '' : String(.04 + .96 * q);
+    });
+  }
+}
+</script>
+</body>
+</html>
