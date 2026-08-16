@@ -7,26 +7,36 @@ render at 15×15, greyscale, and colourize when you hover the block they're in
 
 Filenames are referenced directly in `index.html`, so they must match:
 
-| file                        | where                          | have it? |
-| --------------------------- | ------------------------------ | -------- |
-| `kyrall.svg`                | `kyrall.com` card              | yes      |
-| `roomform.svg`              | `roomform.ai` card             | yes      |
-| `red-hat.svg`               | `redhat.com` card              | yes      |
-| `general-motors.svg`        | `gm.com` card                  | yes      |
-| `boston-university.svg`     | `bu.edu` card                  | yes      |
-| `upper-canada-college.svg`  | `ucc.on.ca` card               | yes      |
-| `bu-rugby.svg`              | `rugby` leaf                   | yes      |
-| `bu-pep-band.svg`           | `pep.band` leaf                | yes      |
-| `tke.svg`                   | `tke` leaf                     | yes      |
-| `camp-arowhon.svg`          | `arowhon.guitar` leaf          | yes      |
+| file                      | where                          | have it? |
+| -------------------------| ------------------------------ | -------- |
+| `bu-rugby.svg`           | `Men's Rugby` leaf             | yes      |
+| `bu-pep-band.svg`        | `Pep Band` leaf                | yes      |
+| `tke.svg`                | `Tau Kappa Epsilon` leaf       | yes      |
+| `camp-arowhon.svg`       | `Camp Arowhon` leaf            | yes      |
+| `upper-canada-college.svg`| `ucc.on.ca` card               | yes      |
+| `boston-university.svg`  | `bu.edu` card                  | yes      |
+| `fortune.svg`            | `4tune.vip` card               | yes      |
+| `sonder-ground.svg`      | `sonder.ground` card           | yes      |
+| `big-night.svg`          | `Big Night Entertainment` leaf | yes      |
+| `red-bull.svg`           | `Red Bull USA` leaf            | yes      |
+| `general-motors.svg`     | `gm.com` card                  | yes      |
+| `red-hat.svg`            | `redhat.com` card              | yes      |
+| `roomform.svg`           | `roomform.ai` card             | yes      |
+| `kyrall.svg`             | `kyrall.com` card              | yes      |
 
-Four leaves carry no logo by choice — `Sports`, `Music`, `Boarding` and
-`Hockey` — as does the BOAS card.
+No logo by choice: `manhattan.nyc`, `Hockey`, `hongkong.sar`, `Sports`, `Music`, `Boarding`, `sites.bu.edu/boas`, `tellura.pub`, `tke.dodgeball`.
 
-If you do add one later, the slot markup is a `<span class="jos-logo">` with a
-`quiet` `<photo-slot>` inside; copy any existing leaf's. `quiet` means a
-missing file collapses the logo *and the gap beside it*, so a reference
-without a file is never a broken state.
+## These files are far too big
+
+They render at **15×15 px** but total ~2.9 MB — `boston-university.svg` alone is
+1.2 MB, `roomform.svg` 688 KB. That is ~2.9 MB of page weight spent on marks
+smaller than a favicon, all of it on the critical path for the timeline.
+
+Worth running each through an SVG minifier (SVGO, or "Save as → optimised SVG"
+in Illustrator/Figma). Most of the bulk is usually embedded raster data, editor
+metadata, or thousands of path nodes describing detail that is invisible at
+15px. If a mark will not reduce, a 32×32 PNG beats a 1 MB SVG comfortably —
+change the extension in `index.html` to match.
 
 Notes:
 

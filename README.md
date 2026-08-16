@@ -202,11 +202,12 @@ Entertainment`, `Red Bull USA`) all hang off Fortune's node this way — the lea
 lines run *behind* the cards above them and only their tails show, which is the
 same trick the BU cluster uses.
 
-Card window titles that are real domains are links (`target="_blank"`,
-`rel="noopener noreferrer"`), as is the `Camp Arowhon` leaf name. They keep
-`.jos-win-t`, so a long one still ellipsizes instead of pushing the date out of
-the header. `roomform.ai`, `hongkong.sar`, `manhattan.nyc`, `tellura.pub` and
-`tke.dodgeball` stay plain text.
+**Links.** Card window titles (`a.jos-win-t`) and leaf names (`a.jos-leaf-n`)
+can both be links — 8 and 6 of them are. All use `target="_blank"` with
+`rel="noopener noreferrer"`. Titles keep `.jos-win-t`, so a long one still
+ellipsizes instead of pushing the date out of the header. `roomform.ai`,
+`hongkong.sar`, `manhattan.nyc`, `tellura.pub` and `tke.dodgeball` stay plain
+text — they're labels, not addresses.
 
 **Leaves are styled entirely by `.jos-leaf`** — position is the only thing
 inline. They carry the same affordances as a full stop, which is deliberate:
