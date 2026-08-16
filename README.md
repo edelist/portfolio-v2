@@ -17,7 +17,7 @@ js/photos.js          THE PHOTO LIST. The one file you edit to change the
                       hero mosaic pool
 js/mosaic.js          <photo-mosaic> — the hero wall: slideshow, light
                       sweep, cursor light
-js/photo-slot.js      <photo-slot> — read-only image frame (polaroids, logos)
+js/photo-slot.js      <photo-slot> — read-only image frame (flags, card logos)
 js/globe.js           the hero globe: projection math, coastlines, flight
                       route, drag/inertia, hover lighting, click-to-focus
 js/terminal.js        terminal command table — add commands here
@@ -47,7 +47,7 @@ Three places take images:
 | what | where the filename lives |
 | ---- | ------------------------ |
 | hero mosaic | the `mosaic` list in `js/photos.js` |
-| timeline polaroids | `src` on the three `<photo-slot>`s in `index.html` |
+| city flags         | `assets/flags/` — see the README there              |
 | company logos | `src` on the six `<photo-slot class="jos-logo">`s in card headers |
 
 Drop the files into `assets/photos/` and `assets/logos/` — those folders have
@@ -120,6 +120,34 @@ Touch is handled, not just fitted:
 Below 700px the mosaic rebuilds itself as 3×6 instead of 7×4; 28 tiles on a
 phone are stamps, not photographs.
 
+## Flight-path city labels
+
+Each stop's name sits **30px from its dot, vertically centred on it**, on the
+side its node faces. That's the whole rule — `.jos-city--l` / `.jos-city--r`
+in the stylesheet do the alignment via `translate(-100%,-50%)` /
+`translateY(-50%)`, so label width never enters into it and the two numbers in
+each label's inline style are just the node's own coordinates ±30.
+
+**Why 30 and not something tidier:** the route doesn't stop at a node, it
+overshoots it. Within a label's own 14px-tall band the path runs up to 15px
+past the node on the label's side, so anything under ~25px puts the line
+through the type. 30 leaves at least 12px of clear air at every stop, and 30
+at the two endpoints where the path terminates on the node.
+
+If you move a node, move its label by the same delta and re-check clearance —
+the curve's overshoot changes with the control points, not just the node.
+
+Flags come from `assets/flags/` (see the README there) and always lead the
+name, on both sides, so every label reads the same way round.
+
+All eight nodes are labelled. Boston appears three times because three
+separate stops are in Boston (Roomform, Red Hat, BU) — that's the path being
+honest, not a duplication bug.
+
+**Labels are hidden below 1100px** (`.jos-stage>span{display:none}`) along with
+the whole SVG route — the stacked mobile layout has no curve to label, and each
+card names its own city in its window title.
+
 ## Theming
 
 Every colour goes through CSS custom properties defined in one place — the
@@ -162,7 +190,7 @@ To reskin, edit those two token blocks and nothing else.
 - Terminal: `help`, `whoami`, `where`, `next`, `work`, `play`, `resume`,
   `contact`, `ls`, `clear` (+ a couple of easter eggs).
 - Timeline: route draws pinned to mid-screen; cards slide in from their
-  side of the page; polaroids colourize on hover, as do the card logos.
+  side of the page; the card logos colourize on hover.
 - Status bar: the theme toggle names the mode it will switch you to.
 
 ## Deploy on GitHub Pages

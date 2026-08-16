@@ -82,6 +82,21 @@ a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
            transition:color .2s,border-color .2s,background .2s}
 .jos-theme:hover{color:var(--accent);border-color:rgba(var(--accent-rgb),.4);
                  background:rgba(var(--accent-rgb),.1)}
+/* Timeline city labels: flag + name, vertically centred on the node dot.
+   --l hangs the label off to the LEFT of its dot (so its right edge is what
+   sits the fixed 15px away), --r off to the right. Each node uses the side
+   its half of the stage faces, which is the outside of the curve there — the
+   route can't cross the type. pointer-events:none so a label can never eat a
+   hover meant for the card behind it. */
+.jos-city{position:absolute;display:flex;align-items:center;gap:6px;
+          font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.04em;
+          color:rgba(var(--ink-rgb),.45);white-space:nowrap;pointer-events:none}
+.jos-city--l{transform:translate(-100%,-50%)}
+.jos-city--r{transform:translateY(-50%)}
+.jos-city--now{color:var(--accent)}
+/* the hairline keeps a white-heavy flag (US) off a light background */
+.jos-flag{width:15px;height:10px;flex:none;border-radius:1px;overflow:hidden;
+          box-shadow:0 0 0 .5px rgba(var(--ink-rgb),.28)}
 /* terminal scrollback. These are classes, not inline colours, because a
    {{ }} expression inside a style attribute is not parseable CSS and every
    editor's CSS language server flags it. */
@@ -131,17 +146,14 @@ a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
   .jos-stage>div{position:static!important;left:auto!important;top:auto!important;
                  width:auto!important;max-width:100%;box-sizing:border-box}
   .jos-stage>div[data-m]{margin:0}
+  /* data-m is the stacking order on mobile, newest first — the desktop layout
+     is absolutely positioned, so DOM order alone would run the timeline
+     backwards. Renumber contiguously if you add or remove a block. */
   [data-m="1"]{order:1}   [data-m="2"]{order:2}   [data-m="3"]{order:3}
   [data-m="4"]{order:4}   [data-m="5"]{order:5}   [data-m="6"]{order:6}
   [data-m="7"]{order:7}   [data-m="8"]{order:8}   [data-m="9"]{order:9}
   [data-m="10"]{order:10} [data-m="11"]{order:11} [data-m="12"]{order:12}
-  [data-m="13"]{order:13} [data-m="14"]{order:14} [data-m="15"]{order:15}
-  [data-m="16"]{order:16} [data-m="17"]{order:17}
-  /* polaroids keep their authored tilt (data-fly-rot) but not the full-bleed
-     width the rule above would give them — they should read as a photo laid
-     on the column, not another card */
-  .jos-stage>div[data-m="2"],.jos-stage>div[data-m="13"],.jos-stage>div[data-m="16"]{
-    align-self:flex-start;width:max-content!important}
+  [data-m="13"]{order:13} [data-m="14"]{order:14}
   .jos-logs{flex-direction:column;gap:16px}
   .jos-hud{position:static!important;margin:0!important;width:min(320px,90vw)!important}
 }
@@ -278,52 +290,60 @@ a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
       <circle ref="{{ nodeRef7 }}" cx="900" cy="1720" r="5" style="fill:var(--node);stroke:rgba(var(--hair-rgb),.3);stroke-width:1.5;transition:fill .3s,stroke .3s"></circle>
       <g ref="{{ travelerRef }}" transform="translate(150,120)"><circle r="9" style="fill:none;stroke:rgba(var(--accent-rgb),.45);stroke-width:1"></circle><circle r="4" style="fill:var(--accent)"></circle></g>
     </svg>
-    <span style="position:absolute;left:95px;top:140px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">MUNICH</span>
-    <span style="position:absolute;left:840px;top:356px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">BOSTON</span>
-    <span style="position:absolute;left:185px;top:578px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">BOSTON</span>
-    <span style="position:absolute;left:850px;top:845px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">DETROIT</span>
-    <span style="position:absolute;left:825px;top:1345px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">TORONTO</span>
-    <span style="position:absolute;left:245px;top:1580px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">HKG</span>
-    <span style="position:absolute;left:925px;top:1712px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">NYC</span>
+    <!-- City labels. Position is a rule, not seven hand-tuned offsets:
+         left:  node x ± 30   top: node y   (see .jos-city in the stylesheet)
+         Each label is centred on its dot and hangs off the half of the stage
+         its node sits in. 30 is not arbitrary: the route overshoots a node by
+         up to 15px within the label's own vertical band, so 30 from the dot
+         leaves at least 15px of clear air between the type and the line at
+         every stop. Move a node and its label moves by the same two numbers. -->
+    <span class="jos-city jos-city--l jos-city--now" style="left:120px;top:120px"><span class="jos-flag"><photo-slot src="./assets/flags/de.svg" fit="contain" radius="1" label=""></photo-slot></span>MUNICH</span>
+    <span class="jos-city jos-city--r" style="left:850px;top:340px"><span class="jos-flag"><photo-slot src="./assets/flags/us.svg" fit="contain" radius="1" label=""></photo-slot></span>BOSTON</span>
+    <span class="jos-city jos-city--l" style="left:220px;top:560px"><span class="jos-flag"><photo-slot src="./assets/flags/us.svg" fit="contain" radius="1" label=""></photo-slot></span>BOSTON</span>
+    <span class="jos-city jos-city--r" style="left:860px;top:830px"><span class="jos-flag"><photo-slot src="./assets/flags/us.svg" fit="contain" radius="1" label=""></photo-slot></span>DETROIT</span>
+    <span class="jos-city jos-city--l" style="left:240px;top:1090px"><span class="jos-flag"><photo-slot src="./assets/flags/us.svg" fit="contain" radius="1" label=""></photo-slot></span>BOSTON</span>
+    <span class="jos-city jos-city--r" style="left:830px;top:1330px"><span class="jos-flag"><photo-slot src="./assets/flags/ca.svg" fit="contain" radius="1" label=""></photo-slot></span>TORONTO</span>
+    <span class="jos-city jos-city--l" style="left:270px;top:1560px"><span class="jos-flag"><photo-slot src="./assets/flags/hk.svg" fit="contain" radius="1" label=""></photo-slot></span>HONG KONG</span>
+    <span class="jos-city jos-city--r" style="left:930px;top:1720px"><span class="jos-flag"><photo-slot src="./assets/flags/us.svg" fit="contain" radius="1" label=""></photo-slot></span>NEW YORK</span>
 
-    <div data-m="17" class="jos-card" id="stop-nyc" data-fly="1" data-hot style="position:absolute;left:600px;top:1660px;width:270px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+    <div data-m="14" class="jos-card" id="stop-nyc" data-fly="1" data-hot style="position:absolute;left:600px;top:1660px;width:270px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">manhattan.nyc</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">2003</span></div>
       <p style="margin:0;padding:0 14px 12px;font-size:13px;line-height:1.5;color:rgba(var(--ink-rgb),.68)">Born in New York City.</p>
     </div>
 
-    <div data-m="15" class="jos-card" id="stop-hkg" data-fly="1" data-hot style="position:absolute;left:360px;top:1492px;width:320px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+    <div data-m="13" class="jos-card" id="stop-hkg" data-fly="1" data-hot style="position:absolute;left:360px;top:1492px;width:320px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">hongkong.sar</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">2003–2017</span></div>
       <p style="margin:0;padding:0 14px 12px;font-size:13px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">Grew up in Hong Kong — a childhood measured in flights.</p>
     </div>
 
-    <div data-m="14" class="jos-card" id="stop-yyz" data-fly="1" data-hot style="position:absolute;left:450px;top:1262px;width:330px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+    <div data-m="12" class="jos-card" id="stop-yyz" data-fly="1" data-hot style="position:absolute;left:450px;top:1262px;width:330px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-logo"><photo-slot src="./assets/logos/upper-canada-college.svg" fit="contain" radius="2" label=""></photo-slot></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">ucc.on.ca</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">2017–2021</span></div>
       <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">High school — IB Diploma, 41 pts</h3><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">Upper Canada College</span><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68)">Engineering, lead guitar and rugby all booted here.</p></div>
     </div>
 
-    <div data-m="6" class="jos-card" id="stop-bos" data-fly="1" data-hot style="position:absolute;left:330px;top:1000px;width:380px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+    <div data-m="5" class="jos-card" id="stop-bos" data-fly="1" data-hot style="position:absolute;left:330px;top:1000px;width:380px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-logo"><photo-slot src="./assets/logos/boston-university.svg" fit="contain" radius="2" label=""></photo-slot></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">bu.edu</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">2021–2025</span></div>
       <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">BS Computer Engineering, ML concentration</h3><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">Boston University</span><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68)">Four years, six parallel threads →</p></div>
     </div>
 
-    <div data-m="7" data-fly=".55" style="position:absolute;left:730px;top:985px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">boas.lab</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">fNIRS · ConvLSTM research</span></div>
-    <div data-m="8" data-fly=".55" style="position:absolute;left:915px;top:1022px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">fortune.dj</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">resident @ big night</span></div>
-    <div data-m="9" data-fly=".55" style="position:absolute;left:730px;top:1060px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">rugby</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">BU men's team</span></div>
-    <div data-m="10" data-fly=".55" style="position:absolute;left:915px;top:1097px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">pep.band</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">lead guitar</span></div>
-    <div data-m="11" data-fly=".55" style="position:absolute;left:730px;top:1135px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">tke</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">brotherhood · philanthropy</span></div>
-    <div data-m="12" data-fly=".55" style="position:absolute;left:915px;top:1172px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">arowhon.guitar</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">head instructor, summers</span></div>
+    <div data-m="6" data-fly=".55" style="position:absolute;left:730px;top:985px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">boas.lab</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">fNIRS · ConvLSTM research</span></div>
+    <div data-m="7" data-fly=".55" style="position:absolute;left:915px;top:1022px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">fortune.dj</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">resident @ big night</span></div>
+    <div data-m="8" data-fly=".55" style="position:absolute;left:730px;top:1060px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">rugby</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">BU men's team</span></div>
+    <div data-m="9" data-fly=".55" style="position:absolute;left:915px;top:1097px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">pep.band</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">lead guitar</span></div>
+    <div data-m="10" data-fly=".55" style="position:absolute;left:730px;top:1135px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">tke</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">brotherhood · philanthropy</span></div>
+    <div data-m="11" data-fly=".55" style="position:absolute;left:915px;top:1172px;width:170px;box-sizing:border-box;padding:6px 10px;background:rgba(var(--panel-rgb),.9);border:1px solid rgba(var(--accent-rgb),.25);border-radius:8px;font-family:'JetBrains Mono',monospace"><span style="font-size:11px;color:var(--accent);display:block">arowhon.guitar</span><span style="font-size:10px;color:rgba(var(--ink-rgb),.5)">head instructor, summers</span></div>
 
-    <div data-m="5" class="jos-card" id="stop-dtw" data-fly="1" data-hot style="position:absolute;left:470px;top:762px;width:340px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+    <div data-m="4" class="jos-card" id="stop-dtw" data-fly="1" data-hot style="position:absolute;left:470px;top:762px;width:340px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-logo"><photo-slot src="./assets/logos/general-motors.svg" fit="contain" radius="2" label=""></photo-slot></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">gm.com</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">Jun–Aug 2023</span></div>
       <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">Controller Test Engineer (Internship)</h3><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">General Motors</span><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">Hydrogen fuel-cell controller integration: Simulink sims, dSPACE HIL testing, CAN serial data safety verification.</p></div>
     </div>
 
-    <div data-m="4" class="jos-card" data-fly="1" data-hot style="position:absolute;left:310px;top:492px;width:340px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+    <div data-m="3" class="jos-card" data-fly="1" data-hot style="position:absolute;left:310px;top:492px;width:340px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-logo"><photo-slot src="./assets/logos/red-hat.svg" fit="contain" radius="2" label=""></photo-slot></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">redhat.com</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">Sep–Dec 2024</span></div>
       <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">Software Engineer (Co-op)</h3><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">Red Hat</span><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">Built Ansible Wrangler: agent for autonomous Ansible deployment via ServiceNow.</p></div>
     </div>
 
-    <div data-m="3" class="jos-card" data-fly="1" data-hot style="position:absolute;left:450px;top:275px;width:350px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
+    <div data-m="2" class="jos-card" data-fly="1" data-hot style="position:absolute;left:450px;top:275px;width:350px;background:rgba(var(--panel-rgb),.92);border:1px solid rgba(var(--hair-rgb),.09);border-radius:10px;overflow:hidden;transition:border-color .25s" style-hover="border-color:rgba(var(--accent-rgb),.55)">
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-logo"><photo-slot src="./assets/logos/roomform.svg" fit="contain" radius="2" label=""></photo-slot></span><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">roomform.ai</span><span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">Sep 2025 – July 2026</span></div>
       <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">Co-Founder, CEO</h3><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">Roomform AI</span><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">Generative 3D layer for furniture commerce &amp; design. Led ML, product, GTM. Interviewed at Y Combinator.</p></div>
     </div>
@@ -333,18 +353,6 @@ a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
       <div style="padding:12px 14px;display:flex;flex-direction:column;gap:5px"><h3 style="margin:0;font-size:15px;font-weight:600">ML Engineer</h3><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">Kyrall</span><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">Generative AI for CAD &amp; manufacturing.</p></div>
     </div>
 
-    <div data-m="16" data-fly="1.3" data-fly-rot=" rotate(-3deg)" style="position:absolute;left:40px;top:1490px;filter:grayscale(1);opacity:.7;transition:filter .45s,opacity .45s;background:rgba(var(--panel-rgb),.95);border:1px solid rgba(var(--hair-rgb),.12);border-radius:8px;padding:8px 8px 6px;display:flex;flex-direction:column;gap:5px" style-hover="filter:grayscale(0);opacity:1">
-      <photo-slot src="./assets/photos/hong-kong.jpg" label="assets/photos/hong-kong.jpg" style="width:180px;height:140px"></photo-slot>
-      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(var(--ink-rgb),.5)">hong_kong.jpg</span>
-    </div>
-    <div data-m="13" data-fly="1.3" data-fly-rot=" rotate(2deg)" style="position:absolute;left:55px;top:1035px;filter:grayscale(1);opacity:.7;transition:filter .45s,opacity .45s;background:rgba(var(--panel-rgb),.95);border:1px solid rgba(var(--hair-rgb),.12);border-radius:8px;padding:8px 8px 6px;display:flex;flex-direction:column;gap:5px" style-hover="filter:grayscale(0);opacity:1">
-      <photo-slot src="./assets/photos/bu-rugby.jpg" label="assets/photos/bu-rugby.jpg" style="width:180px;height:140px"></photo-slot>
-      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(var(--ink-rgb),.5)">bu_rugby.jpg</span>
-    </div>
-    <div data-m="2" data-fly="1.3" data-fly-rot=" rotate(-2deg)" style="position:absolute;left:110px;top:265px;filter:grayscale(1);opacity:.7;transition:filter .45s,opacity .45s;background:rgba(var(--panel-rgb),.95);border:1px solid rgba(var(--hair-rgb),.12);border-radius:8px;padding:8px 8px 6px;display:flex;flex-direction:column;gap:5px" style-hover="filter:grayscale(0);opacity:1">
-      <photo-slot src="./assets/photos/fortune-dj.jpg" label="assets/photos/fortune-dj.jpg" style="width:180px;height:140px"></photo-slot>
-      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(var(--ink-rgb),.5)">fortune_at_big_night.jpg</span>
-    </div>
   </div>
 </section>
 

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15 10" width="15" height="10">
+  <rect width="15" height="10" fill="#ffffff"/>
+  <rect width="3.75" height="10" fill="#d52b1e"/>
+  <rect x="11.25" width="3.75" height="10" fill="#d52b1e"/>
+  <!-- simplified 11-point maple leaf; at 6px it reads as the mark, not the detail -->
+  <g transform="translate(4.5,2) scale(0.06)" fill="#d52b1e">
+    <path d="M50 4 L58 26 L74 20 L69 38 L88 34 L75 49 L92 58 L71 61 L76 78 L57 70 L54 96 L50 84 L46 96 L43 70 L24 78 L29 61 L8 58 L25 49 L12 34 L31 38 L26 20 L42 26 Z"/>
+  </g>
+</svg>

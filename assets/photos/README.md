@@ -14,18 +14,14 @@ a few photos at a time.
 - keep each file under ~250KB — the whole pool loads
 - landscape or portrait both work; tiles crop to fill
 
-## Timeline polaroids
+## Timeline polaroids — removed
 
-These are referenced by name directly in `index.html`, so the filename must
-match exactly:
+The three polaroids that sat beside the flight path (`hong-kong.jpg`,
+`bu-rugby.jpg`, `fortune-dj.jpg`) were taken out. Nothing references those
+filenames any more, so dropping the files back in does nothing on its own —
+you'd re-add the `<photo-slot>` blocks in `index.html` too.
 
-| file              | where it appears        |
-| ----------------- | ----------------------- |
-| `hong-kong.jpg`   | HKG stop, 2003–2017     |
-| `bu-rugby.jpg`    | BOS stop, 2021–2025     |
-| `fortune-dj.jpg`  | Roomform stop, top left |
-
-Frames are 180×140, so ~540×420 covers retina.
-
-Until a file exists the slot shows a dashed placeholder with the path it is
-looking for — so the layout never breaks while you're still collecting them.
+Worth knowing if you bring them back: the left-hand polaroid positions
+overlapped the city labels on the route (`hong-kong.jpg` ran 52px into the
+HONG KONG label). Either place them clear of the labels' 30px lane beside
+each dot, or move the labels.
