@@ -16,6 +16,13 @@
  *   fit     'cover' (default) | 'contain'. Use contain for logos.
  *   label   placeholder caption shown while src is missing/broken.
  *   radius  corner radius in px (default 4).
+ *   quiet   render NOTHING when src is missing/broken, instead of the dashed
+ *           placeholder. Use for decoration that is optional — a 15px company
+ *           logo reads as a dashed box, not as "drop a file here".
+ *
+ * The element also reflects its state as a `data-empty` attribute whenever
+ * there is no image to show, so a wrapper can collapse its own layout (see
+ * .jos-logo in index.html, which uses :has() to drop the flex gap too).
  *
  * Usage:
  *   <photo-slot src="./assets/photos/hong-kong.jpg" label="hong kong"></photo-slot>
@@ -46,7 +53,7 @@
     '<circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5-6 6-3-3-4 4"/></svg>';
 
   class PhotoSlot extends HTMLElement {
-    static get observedAttributes() { return ['src', 'fit', 'label', 'radius']; }
+    static get observedAttributes() { return ['src', 'fit', 'label', 'radius', 'quiet']; }
 
     constructor() {
       super();
@@ -63,16 +70,51 @@
       // fall back to the placeholder and keep the layout intact.
       this._img.addEventListener('load', () => {
         this._img.classList.add('on');
-        this._ph.hidden = true;
+        this._sync();
       });
       this._img.addEventListener('error', () => {
         this._img.classList.remove('on');
-        this._ph.hidden = false;
+        this._sync();
       });
     }
 
-    connectedCallback() { this._render(); }
+    connectedCallback() { this._render(); this._settle(); }
+    disconnectedCallback() { cancelAnimationFrame(this._raf); }
     attributeChangedCallback() { this._render(); }
+
+    /**
+     * Is there an image to show? DERIVED from the <img> every time, never
+     * remembered from a transition: the page re-renders on a 1s clock, so
+     * _render() can run long after the load or error fired and still has to
+     * reach the same answer. (Marking the state only when `src` changed left
+     * a failed image looking non-empty forever.)
+     */
+    _isEmpty() {
+      if (!(this.getAttribute('src') || '')) return true;
+      if (!this._img.complete) return true;     // in flight
+      return !this._img.naturalWidth;           // settled but broken
+    }
+    /** Show/hide the placeholder and mirror the state onto the host. */
+    _setEmpty(empty) {
+      this._ph.hidden = !empty || this.hasAttribute('quiet');
+      this.toggleAttribute('data-empty', empty);
+    }
+    _sync() { this._setEmpty(this._isEmpty()); }
+    /**
+     * Converge on the derived answer after a src change. load/error are the
+     * primary signal, but a slot can miss one — an element re-created by the
+     * page runtime around an already-cached failure never sees an error fire
+     * — and a stale "not empty" leaves a 15px hole in the row forever. So
+     * re-check each frame until the image has settled, then stop.
+     */
+    _settle() {
+      cancelAnimationFrame(this._raf);
+      const tick = () => {
+        this._sync();
+        if (!this._img.complete) this._raf = requestAnimationFrame(tick);
+      };
+      this._raf = requestAnimationFrame(tick);
+    }
 
     _render() {
       const src = this.getAttribute('src') || '';
@@ -85,10 +127,11 @@
       this._img.style.objectFit = fit;
       if (this._img.getAttribute('src') !== src) {
         this._img.classList.remove('on');
-        this._ph.hidden = false;
         if (src) this._img.setAttribute('src', src);
         else this._img.removeAttribute('src');
+        this._settle();
       }
+      this._sync();
     }
   }
 

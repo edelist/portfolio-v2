@@ -134,15 +134,40 @@ past the node on the label's side, so anything under ~25px puts the line
 through the type. 30 leaves at least 12px of clear air at every stop, and 30
 at the two endpoints where the path terminates on the node.
 
-If you move a node, move its label by the same delta and re-check clearance —
-the curve's overshoot changes with the control points, not just the node.
+### Nodes live on the curve's turning points
+
+This is load-bearing, not decoration. Every node sits where the curve doubles
+back — where it is momentarily vertical and therefore covers the least
+horizontal distance inside a label's 14px band. Measured, the eight nodes need
+gaps of 15 · 30 · 31 · 29 · 30 · 30 · 30 · 15 px. *That* is where the 30 comes
+from.
+
+Between two turning points the curve runs flat, and a label there needs 34–54px
+to clear it — at the midpoint of a segment, 54. **So you cannot add a stop
+part-way along the spine and keep the label rule.** A new entry either goes at a
+turning point (which means redrawing the path) or branches off an existing node,
+which is what `boaslab.org` does. If you move a node, re-check clearance: the
+overshoot comes from the control points, not the node.
 
 Flags come from `assets/flags/` (see the README there) and always lead the
 name, on both sides, so every label reads the same way round.
 
-All eight nodes are labelled. Boston appears three times because three
-separate stops are in Boston (Roomform, Red Hat, BU) — that's the path being
-honest, not a duplication bug.
+All eight nodes are labelled. Toronto and Boston each appear twice — Roomform
+and UCC are both Toronto, Red Hat and BU are both Boston — which is the path
+being honest, not a duplication bug.
+
+## Branches off a node
+
+`boaslab.org` (a full card) and the four leaves under it hang off the BU node;
+`arowhon.guitar` hangs off the high-school node. They're ordinary absolutely
+positioned blocks joined to their node by an `<svg><line>`. Two things to know:
+
+- **A connector line that passes behind a chip is fine** — the chips are DOM
+  elements with an opaque fill, painted over the SVG, so the line is occluded.
+  Don't contort the layout to avoid crossings.
+- **Heights are not what they look like in the markup.** The cards render 121–158px
+  and the chips 50px, so space them off measured boxes, not off the padding you
+  wrote. Getting this wrong is silent — blocks just overlap.
 
 **Labels are hidden below 1100px** (`.jos-stage>span{display:none}`) along with
 the whole SVG route — the stacked mobile layout has no curve to label, and each

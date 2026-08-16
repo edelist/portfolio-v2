@@ -6,14 +6,25 @@ you hover the card they belong to.
 
 Filenames are referenced directly in `index.html`, so they must match:
 
-| file                        | card              |
-| --------------------------- | ----------------- |
-| `kyrall.svg`                | `munich.kyrall`   |
-| `roomform.svg`              | `boston.roomform` |
-| `red-hat.svg`               | `boston.redhat`   |
-| `general-motors.svg`        | `detroit.gm`      |
-| `boston-university.svg`     | `boston.bu`       |
-| `upper-canada-college.svg`  | `toronto.ucc`     |
+| file                        | where                          | have it? |
+| --------------------------- | ------------------------------ | -------- |
+| `kyrall.svg`                | `kyrall.com` card              | yes      |
+| `roomform.svg`              | `roomform.ai` card             | yes      |
+| `red-hat.svg`               | `redhat.com` card              | yes      |
+| `general-motors.svg`        | `gm.com` card                  | yes      |
+| `boston-university.svg`     | `bu.edu` card                  | yes      |
+| `upper-canada-college.svg`  | `ucc.on.ca` card               | yes      |
+| `boas-lab.svg`              | `boaslab.org` card             | **no**   |
+| `fortune.svg`               | `fortune.dj` leaf              | **no**   |
+| `bu-rugby.svg`              | `rugby` leaf                   | **no**   |
+| `bu-pep-band.svg`           | `pep.band` leaf                | **no**   |
+| `tke.svg`                   | `tke` leaf                     | **no**   |
+| `camp-arowhon.svg`          | `arowhon.guitar` leaf          | **no**   |
+
+The six marked **no** are referenced but not in the repo yet. That is not a
+broken state: those slots carry `quiet`, so a missing file collapses the logo
+*and the gap beside it* — the row just reads without a mark. Drop the file in
+with the matching name and it appears, no markup change.
 
 Notes:
 
