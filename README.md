@@ -197,7 +197,9 @@ Music, Boarding); `hockey` hangs off Hong Kong. A leaf's logo is optional —
 several carry none.
 
 Branches are ordinary absolutely positioned blocks joined to their node by an
-`<svg><line>`. `sonderground` hangs off `fortune` the same way.
+`<svg><line>`. `sonder.ground` and the `Big Night` leaf both hang off Fortune's
+node this way — Big Night's line runs *behind* the Sonder Ground card and only
+its tail is visible below, which is the same trick the BU cluster uses.
 
 Card window titles that are real domains are links (`target="_blank"`,
 `rel="noopener noreferrer"`), as is the `Camp Arowhon` leaf name. They keep
