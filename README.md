@@ -143,26 +143,67 @@ gaps of 15 · 30 · 31 · 29 · 30 · 30 · 30 · 15 px. *That* is where the 30 
 from.
 
 Between two turning points the curve runs flat, and a label there needs 34–54px
-to clear it — at the midpoint of a segment, 54. **So you cannot add a stop
-part-way along the spine and keep the label rule.** A new entry either goes at a
-turning point (which means redrawing the path) or branches off an existing node,
-which is what `boaslab.org` does. If you move a node, re-check clearance: the
-overshoot comes from the control points, not the node.
+to clear it — at the midpoint of a segment, 54. **So you cannot drop a stop
+part-way along the spine and keep the label rule.** A new entry either branches
+off an existing node (what `sites.bu.edu/boas` does) or gets a turning point of
+its own.
+
+### Adding a stop to the spine
+
+`fortune` was added this way. The catch is that turning points **alternate**
+left/right, so inserting one would flip the side of every node below it and
+force a full re-layout. Insert a **pair** instead — one segment becomes three:
+
+```
+…250,560  C90,650 660,690 830,740     ← new right extremum = the new stop
+          C1000,850 420,860 250,920   ← new left extremum, a plain bend, no node
+          C90,990 660,1030 830,1100   ← the old next node, now 270px lower
+```
+
+Parity is preserved, so every node below keeps its side and only moves down by
+the added height. Everything below the insertion — cards, leaves, labels,
+connector lines, node circles — shifts by that same delta, and the SVG height,
+its viewBox and the stage height grow with it.
+
+Two things that bit me doing it:
+
+- **Labels match `left:…px;top:…px` too.** A blanket regex over that pattern
+  shifts them along with the blocks; shifting labels separately as well moves
+  them twice.
+- **Check the new node's required gap before building on it.** Reshaping a
+  segment changes the curve at *both* ends — the first attempt pushed Red Hat's
+  requirement from 31 to 36px. Tuning the control points brought it back to
+  31/30/29, keeping the 30px rule intact.
+
+The stage's height is read from its inline style by `layoutStage()` and scaled;
+it is deliberately **not** duplicated in the script (it used to be, and the copy
+silently overrode the markup the moment the stage grew). It parses the inline
+attribute rather than `getComputedStyle`, because below 1100px the stylesheet
+forces `height:auto`, so the computed value there is the content height, not the
+design height.
 
 Flags come from `assets/flags/` (see the README there) and always lead the
 name, on both sides, so every label reads the same way round.
 
-All eight nodes are labelled. Toronto and Boston each appear twice — Roomform
-and UCC are both Toronto, Red Hat and BU are both Boston — which is the path
-being honest, not a duplication bug.
+All nine nodes are labelled. Toronto appears twice (Roomform, UCC) and Boston
+three times (Red Hat, Fortune, BU) — which is the path being honest, not a
+duplication bug.
 
 ## Branches off a node
 
 The BOAS card and three leaves (`rugby`, `pep.band`, `tke`) hang off the BU
-node; four (`sports`, `music`, `boarding`, `arowhon.guitar`) hang off the
-high-school node; `hockey` hangs off Hong Kong. A leaf's logo is optional —
-several carry none. They're ordinary absolutely positioned blocks joined to their node by an
-`<svg><line>`.
+node; four hang off the high-school node (Camp Arowhon first, then Sports,
+Music, Boarding); `hockey` hangs off Hong Kong. A leaf's logo is optional —
+several carry none.
+
+Branches are ordinary absolutely positioned blocks joined to their node by an
+`<svg><line>`. `sonderground` hangs off `fortune` the same way.
+
+Card window titles that are real domains are links (`target="_blank"`,
+`rel="noopener noreferrer"`), as is the `Camp Arowhon` leaf name. They keep
+`.jos-win-t`, so a long one still ellipsizes instead of pushing the date out of
+the header. `roomform.ai`, `hongkong.sar`, `manhattan.nyc`, `tellura.pub` and
+`tke.dodgeball` stay plain text.
 
 **Leaves are styled entirely by `.jos-leaf`** — position is the only thing
 inline. They carry the same affordances as a full stop, which is deliberate:

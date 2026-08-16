@@ -20,8 +20,8 @@ Filenames are referenced directly in `index.html`, so they must match:
 | `tke.svg`                   | `tke` leaf                     | yes      |
 | `camp-arowhon.svg`          | `arowhon.guitar` leaf          | yes      |
 
-Every logo referenced by the page is present. Four leaves carry no logo by
-choice — `sports`, `music`, `boarding` and `hockey` — as does the BOAS card.
+Four leaves carry no logo by choice — `Sports`, `Music`, `Boarding` and
+`Hockey` — as does the BOAS card.
 
 If you do add one later, the slot markup is a `<span class="jos-logo">` with a
 `quiet` `<photo-slot>` inside; copy any existing leaf's. `quiet` means a
