@@ -11,12 +11,12 @@
 export const CLEAR = '\u0000CLEAR';
 
 export const COMMANDS = {
-  help:    "commands: whoami · where · next · work · play · resume · contact · ls · clear",
+  help:    "commands: whoami · where · next · work · fun · resume · contact · ls · clear",
   whoami:  "jack — engineer · founder · artist/dj · athlete",
   where:   "toronto → munich. spin the globe and see.",
   next:    "kyrall @ munich — new thread spawning",
   work:    "bu boas.lab → gm → red hat → roomform → kyrall — scroll ↓ for the flight path",
-  play:    "producing & dj'ing · rugby · guitar · learning",
+  fun:    "producing & dj'ing · rugby · guitar · learning",
   resume:  "hit the resume button in the status bar — pdf incoming",
   contact: "jackedelist@gmail.com — socket open",
   ls:      "story/  logs/  contact/",
