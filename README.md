@@ -1,4 +1,4 @@
-# ~/jack — personal site (v2.3)
+# ~/jack — personal site (v2)
 
 Interactive wireframe globe with click-to-focus zoom, typeable terminal,
 scroll-drawn flight-path timeline, a border-to-border photo wall that
