@@ -378,7 +378,11 @@ a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
 
 <!-- custom cursor layers — positioned every frame by the script -->
 <div ref="{{ dotRef }}" style="position:fixed;top:0;left:0;width:6px;height:6px;border-radius:50%;background:var(--ink);z-index:9999;pointer-events:none;will-change:transform"></div>
-<div ref="{{ ringRef }}" style="position:fixed;top:0;left:0;width:32px;height:32px;border:1.5px solid rgba(var(--ink-rgb),.5);border-radius:50%;z-index:9999;pointer-events:none;will-change:transform"></div>
+<!-- Sized at the ring's LARGEST (ringMax); the script only ever scales it
+     DOWN from here. See the loop for why. 64/3px are deliberately integers —
+     fractional layout sizes get quantized (2.85px border lands at 2.5px) —
+     and the resting scale brings them back to the original 32px/1.5px. -->
+<div ref="{{ ringRef }}" style="position:fixed;top:0;left:0;width:64px;height:64px;border:3px solid rgba(var(--ink-rgb),.5);border-radius:50%;z-index:9999;pointer-events:none;will-change:transform"></div>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;customCursor&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Cursor&quot;},&quot;cursorGlow&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Cursor&quot;}}">
@@ -391,6 +395,12 @@ class Component extends DCLogic {
   };
   // input that cancels an in-flight glideTo()
   glideBreak = ['wheel', 'touchstart', 'keydown'];
+  // Cursor ring geometry. ringMax is its layout size in index.html and the
+  // size it rasterizes at; ringRest is the resting scale, so the ring reads
+  // as 32px idle and ringMax on [data-hot]. Change these together.
+  ringMax = 64;              // layout px — integer so the border isn't quantized
+  ringRest = 32 / 64;        // idle: renders as the original 32px / 1.5px ring
+  ringHot = 60.8 / 64;       // [data-hot]: the original 1.9× — still ≤ 1
   nodes = [];   // timeline node circles, lit in updateScroll() as the route draws
   renderVals() {
     return {
@@ -437,7 +447,7 @@ class Component extends DCLogic {
     this.mx = this.fine ? innerWidth / 2 : -1e4;
     this.my = this.fine ? innerHeight / 2 : -1e4;
     this.dx = this.mx; this.dy = this.my; this.rx = this.mx; this.ry = this.my;
-    this.gx = this.mx; this.gy = this.my; this.sc = 1; this.hot = false;
+    this.gx = this.mx; this.gy = this.my; this.sc = this.ringRest; this.hot = false;
     this.onMove = e => {
       this.mx = e.clientX; this.my = e.clientY;
       this.hot = !!(e.target && e.target.closest && e.target.closest('[data-hot]'));   // ring locks onto [data-hot]
@@ -528,10 +538,17 @@ class Component extends DCLogic {
       this.dx += (this.mx - this.dx) * .4; this.dy += (this.my - this.dy) * .4;
       this.rx += (this.mx - this.rx) * .16; this.ry += (this.my - this.ry) * .16;
       this.gx += (this.mx - this.gx) * .07; this.gy += (this.my - this.gy) * .07;
-      this.sc += ((this.hot ? 1.9 : 1) - this.sc) * .2;
+      // The ring scales DOWN to rest and up to 1 — never past it. will-change
+      // promotes it to its own compositor layer, which is rasterized once at
+      // its layout size and then stretched by the GPU; scaling a 32px raster
+      // up to 1.9 showed exactly that, a blown-up 32px bitmap with a soft
+      // edge and a chunky border. Rastering at full size and downscaling
+      // stays sharp at both ends for the same composited cost.
+      this.sc += ((this.hot ? this.ringHot : this.ringRest) - this.sc) * .2;
       if (this.dotEl) this.dotEl.style.transform = `translate(${this.dx - 3}px,${this.dy - 3}px)`;
       if (this.ringEl) {
-        this.ringEl.style.transform = `translate(${this.rx - 16}px,${this.ry - 16}px) scale(${this.sc})`;
+        const c = this.ringMax / 2;
+        this.ringEl.style.transform = `translate(${this.rx - c}px,${this.ry - c}px) scale(${this.sc})`;
         this.ringEl.style.borderColor = this.hot ? 'rgba(var(--accent-rgb),.9)' : 'rgba(var(--ink-rgb),.5)';
       }
       if (this.glowEl) this.glowEl.style.transform = `translate(${this.gx - 260}px,${this.gy - 260}px)`;
