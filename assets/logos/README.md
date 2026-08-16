@@ -1,8 +1,9 @@
 # assets/logos
 
-Company / school marks that sit in the header of each timeline card, next to
-the traffic-light dots. They render at 15×15, greyscale, and colourize when
-you hover the card they belong to.
+Company / school marks. On a card they sit in the header next to the
+traffic-light dots; on a leaf they sit at the left of the row. Either way they
+render at 15×15, greyscale, and colourize when you hover the block they're in
+— leaves included, since they carry `.jos-card` for exactly that.
 
 Filenames are referenced directly in `index.html`, so they must match:
 
@@ -14,17 +15,18 @@ Filenames are referenced directly in `index.html`, so they must match:
 | `general-motors.svg`        | `gm.com` card                  | yes      |
 | `boston-university.svg`     | `bu.edu` card                  | yes      |
 | `upper-canada-college.svg`  | `ucc.on.ca` card               | yes      |
-| `boas-lab.svg`              | `boaslab.org` card             | **no**   |
-| `fortune.svg`               | `fortune.dj` leaf              | **no**   |
-| `bu-rugby.svg`              | `rugby` leaf                   | **no**   |
-| `bu-pep-band.svg`           | `pep.band` leaf                | **no**   |
-| `tke.svg`                   | `tke` leaf                     | **no**   |
-| `camp-arowhon.svg`          | `arowhon.guitar` leaf          | **no**   |
+| `bu-rugby.svg`              | `rugby` leaf                   | yes      |
+| `bu-pep-band.svg`           | `pep.band` leaf                | yes      |
+| `tke.svg`                   | `tke` leaf                     | yes      |
+| `camp-arowhon.svg`          | `arowhon.guitar` leaf          | yes      |
 
-The six marked **no** are referenced but not in the repo yet. That is not a
-broken state: those slots carry `quiet`, so a missing file collapses the logo
-*and the gap beside it* — the row just reads without a mark. Drop the file in
-with the matching name and it appears, no markup change.
+Every logo referenced by the page is present. Four leaves carry no logo by
+choice — `sports`, `music`, `boarding` and `hockey` — as does the BOAS card.
+
+If you do add one later, the slot markup is a `<span class="jos-logo">` with a
+`quiet` `<photo-slot>` inside; copy any existing leaf's. `quiet` means a
+missing file collapses the logo *and the gap beside it*, so a reference
+without a file is never a broken state.
 
 Notes:
 

@@ -158,16 +158,49 @@ being honest, not a duplication bug.
 
 ## Branches off a node
 
-`boaslab.org` (a full card) and the four leaves under it hang off the BU node;
-`arowhon.guitar` hangs off the high-school node. They're ordinary absolutely
-positioned blocks joined to their node by an `<svg><line>`. Two things to know:
+The BOAS card and three leaves (`rugby`, `pep.band`, `tke`) hang off the BU
+node; four (`sports`, `music`, `boarding`, `arowhon.guitar`) hang off the
+high-school node; `hockey` hangs off Hong Kong. A leaf's logo is optional —
+several carry none. They're ordinary absolutely positioned blocks joined to their node by an
+`<svg><line>`.
 
-- **A connector line that passes behind a chip is fine** — the chips are DOM
-  elements with an opaque fill, painted over the SVG, so the line is occluded.
+**Leaves are styled entirely by `.jos-leaf`** — position is the only thing
+inline. They carry the same affordances as a full stop, which is deliberate:
+
+| carried over | why |
+| --- | --- |
+| `data-hot` | the custom cursor ring locks on, same as a card |
+| hover border lift | via `style-hover`, same accent and `.25s` transition |
+| `.jos-card` | gives the light-mode shadow **and** `.jos-card:hover .jos-logo`, so a leaf's logo colourizes like a card's |
+
+Deliberately *not* carried over: the traffic-light dots and an `#id` anchor,
+which belong to an actual stop the globe can link to, and the full fly-in
+distance (leaves use `data-fly=".55"` so they settle before their parent).
+
+Two traps:
+
+- **A connector line that passes behind a leaf is fine** — leaves are DOM
+  elements with an opaque fill painted over the SVG, so the line is occluded.
   Don't contort the layout to avoid crossings.
-- **Heights are not what they look like in the markup.** The cards render 121–158px
-  and the chips 50px, so space them off measured boxes, not off the padding you
-  wrote. Getting this wrong is silent — blocks just overlap.
+- **Heights are not what the markup suggests.** Cards render 120–200px and
+  leaves 42px depending on wrapping, so space them off measured boxes, not off
+  the padding you wrote. Getting this wrong is silent — blocks just overlap.
+
+## Text staying inside its box
+
+Both nodes and leaves are hardened against overflow, including the
+pathological case of a single unbroken string longer than the block:
+
+- `.jos-leaf>span{min-width:0}` — without it a flex row refuses to shrink and
+  the text overhangs the leaf rather than wrapping.
+- `overflow-wrap:anywhere` on leaf text and on card `h3`/`p`.
+- The card's window-title row is flex with the date pinned right, so only
+  `.jos-win-t` may shrink (and ellipsizes); everything else is `flex:none`.
+  Otherwise a long title squeezes the dots and pushes the date out.
+
+There's a stress check worth re-running after editing copy: set any title or
+body to a 68-character unbroken string and confirm `scrollWidth` never exceeds
+`clientWidth` on the enclosing `.jos-card` / `.jos-leaf`.
 
 **Labels are hidden below 1100px** (`.jos-stage>span{display:none}`) along with
 the whole SVG route — the stacked mobile layout has no curve to label, and each
