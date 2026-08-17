@@ -87,6 +87,31 @@
      <helmet> (which the runtime injects later) — otherwise a light-mode
      visitor gets a dark flash on every load -->
 <script src="./js/theme.js"></script>
+<!-- Serve React from this repo instead of unpkg.com.
+     The whole page is rendered by the runtime below, which hard-fails
+     ("window.React is not available yet") if React doesn't load — so an
+     unpkg outage, a corporate network that blocks public CDNs, or a region
+     that can't reach it served a blank page, not a degraded one. That is a
+     bad failure mode for the one link you hand to a recruiter.
+
+     window.__resources is the runtime's own documented override hook: it
+     maps a CDN URL to a local one and is consulted before the CDN is used
+     (see cdnScriptFor in js/support.js). So this needs NO edit to
+     support.js, which is generated and marked do-not-edit.
+
+     js/vendor/*.js are the byte-identical unpkg files — each was verified
+     against the SRI hash support.js pins before being committed. If you
+     ever change the pinned React version there, re-download to match.
+     Babel is deliberately not vendored: it is ~3MB and only fetched for
+     jsx x-imports, which this page has none of. -->
+<script>
+  window.__resources = {
+    "https://unpkg.com/react@18.3.1/umd/react.production.min.js":
+      "./js/vendor/react.production.min.js",
+    "https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js":
+      "./js/vendor/react-dom.production.min.js"
+  };
+</script>
 <!-- rendering runtime — do not edit -->
 <script src="./js/support.js"></script>
 </head>
