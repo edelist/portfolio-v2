@@ -286,11 +286,12 @@ card names its own city in its window title.
 
 ## Log cards
 
-The two cards under `// logs — projects` take the window metaphor literally:
+The fourteen cards under `// logs — projects` take the window metaphor literally:
 the thumbnail **is** the window's content pane, so the order is title bar →
 screenshot → copy → action bar, which is where a real app puts each of them.
 
 ```
+.jos-logs        the grid — auto-fill, so the column count is never authored
 .jos-log         the card — a flex column, so the footer can sink
 .jos-log-shot    16:10 thumbnail pane, full-bleed under the title bar
 .jos-log-body    h3 + blurb
@@ -298,11 +299,19 @@ screenshot → copy → action bar, which is where a real app puts each of them.
 .jos-log-cta     the button — résumé-style pill, prefixed with a `$` prompt
 ```
 
-Four things worth knowing:
+Five things worth knowing:
 
-- **`margin-top:auto` on the footer is what aligns the two CTAs.** The blurbs
-  are different lengths; without it each button sits wherever its own text
-  ends and the row looks broken. Verified: both CTAs land on the same y.
+- **The grid floor is `minmax(min(340px,100%),1fr)`, and the `min()` is
+  load-bearing.** A bare `minmax(340px,1fr)` floor is a *hard* minimum: on a
+  320px phone the content box is 288px, the column stays 340, and every card
+  overhangs by 52px. The page doesn't scroll — the wrapper's `overflow-x:hidden`
+  clips it — so the failure is silent and just shears the right edge off every
+  card. `min()` lets the floor collapse to the container. Measured at 320 ·
+  390 · 900 · 1280: 1 · 1 · 2 · 3 columns, zero overhang at each.
+- **`margin-top:auto` on the footer is what aligns the CTAs.** The blurbs are
+  different lengths; without it each button sits wherever its own text ends
+  and the row looks ragged. Grid rows stretch, so every card in a row is the
+  same height and the buttons land on one line. Verified at all four widths.
 - **The rest state greys the thumbnail** (`grayscale(.55)`, 82% opacity) and
   hover clears it — the same greyscale→colour reveal the card logos use. The
   filter sits on the `<photo-slot>`, **not** on `.jos-log-shot`, or it would
@@ -317,10 +326,22 @@ Four things worth knowing:
 
 A missing thumbnail renders `<photo-slot>`'s dashed placeholder at the right
 size, captioned with the path it wants — the section ships before the images
-do. Sizing rules and the filename table are in `assets/thumbs/README.md`.
+do, which is the state all fourteen are in now. Sizing rules and the filename
+table are in `assets/thumbs/README.md`.
 
-Past three cards the flex row gets too narrow; give `.jos-logs` a wrap or a
-grid at that point.
+### The twelve build logs still need two things each
+
+The engineering cards were scaffolded from a list of project names, so each
+carries two deliberate placeholders:
+
+- **`SET_DATE`** in the header, where the other cards carry a real date.
+- **The CTA points at the GitHub *profile*, not the repo** —
+  `https://www.github.com/edelist` on all twelve. It's a working link, so
+  nothing is broken while you swap them one at a time.
+
+`grep -n 'SET_DATE\|github.com/edelist' index.html` lists everything
+outstanding. The blurbs describe what each project *is*; they carry no
+invented metrics, and they're written to be replaced with your specifics.
 
 ## Theming
 
@@ -349,8 +370,10 @@ To reskin, edit those two token blocks and nothing else.
   card had no destination when it was built; the button is wired and waiting
   on a URL. If one never exists, drop that card's `.jos-log-foot` — the
   layout doesn't need it, it just loses the bottom bar.
-- **Log thumbnails** — drop `tellura.jpg` and `dodgeball.jpg` into
-  `assets/thumbs/` (16:10, ~1000×625, under 250KB).
+- **Log dates + repo links** — `grep -n 'SET_DATE\|github.com/edelist'
+  index.html`; the twelve build-log cards need a date and a real repo URL each.
+- **Log thumbnails** — fourteen files into `assets/thumbs/` (16:10, ~1000×625,
+  under 250KB). The README in there has the filename table.
 - **Copy / resume content** — the card divs in `index.html`; each has an
   OS-window header (`munich.kyrall`, `boston.bu`, …) and an `id="stop-…"`
   anchor used by the globe's "open chapter" links.
