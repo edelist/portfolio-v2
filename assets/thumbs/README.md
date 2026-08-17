@@ -8,53 +8,74 @@ Filenames are referenced directly in `index.html`, so they must match:
 
 | file                        | card               | have it? |
 | --------------------------- | ------------------ | -------- |
-| `tellura.jpg`               | `tellura.pub`      | no       |
-| `dodgeball.jpg`             | `tke.dodgeball`    | no       |
-| `fpga-clock.jpg`            | `fpga.clock`       | no       |
-| `pokemon.jpg`               | `pokemon.sim`      | no       |
-| `gopher.jpg`                | `gopher.srv`       | no       |
-| `alu.jpg`                   | `alu.v`            | no       |
-| `sevenseg.jpg`              | `sevenseg.drv`     | no       |
-| `bike-light.jpg`            | `bike.light`       | no       |
-| `unix-shell.jpg`            | `unix.shell`       | no       |
-| `threads.jpg`               | `threads.lib`      | no       |
-| `filesystem.jpg`            | `fs.impl`          | no       |
-| `audio-style-transfer.jpg`  | `melstyle.ai`      | no       |
-| `vslam.jpg`                 | `vslam.3d`         | no       |
-| `ansible-wrangler.jpg`      | `ansible.wrangler` | no       |
-| `roomform.jpg`              | `roomform.ai`      | no       |
-
-Fifteen is a lot of images to source. They land independently, so fill the
-grid in whatever order you like — a card with no file behind it still holds
-its place at the right size.
-
-**Half of these are terminal or board projects**, and a screenshot of a shell
-session or a photo of a dev board on a desk both work well here — the pane is
-already a window, so a literal screenshot reads as native rather than as
-clip-art. For the digital-logic ones, a waveform or a schematic crop beats a
-photo of the FPGA.
+| `roomform.jpg`              | `roomform.ai`      | yes      |
+| `dodgeball.jpg`             | `tke.dodgeball`    | yes      |
+| `ansible-wrangler.jpg`      | `ansible.wrangler` | yes      |
+| `vslam.jpg`                 | `vslam.3d`         | yes      |
+| `audio-style-transfer.jpg`  | `melstyle.ai`      | yes      |
+| `filesystem.jpg`            | `fs.impl`          | yes      |
+| `threads.jpg`               | `threads.lib`      | yes      |
+| `unix-shell.jpg`            | `unix.shell`       | yes      |
+| `alu.jpg`                   | `alu.v`            | yes      |
+| `sevenseg.jpg`              | `sevenseg.drv`     | yes      |
+| `bike-light.jpg`            | `bike.light`       | yes      |
+| `fpga-clock.jpg`            | `fpga.clock`       | yes      |
+| `gopher.jpg`                | `gopher.app`       | yes      |
+| `tellura.jpg`               | `tellura.pub`      | yes      |
+| `pokemon.jpg`               | `pokemon.sim`      | **no**   |
 
 **A missing file is not a broken layout.** `<photo-slot>` renders a dashed
-placeholder captioned with the path it wants, at the correct size, so the
-section is shippable before either image exists — and you can add them one at
-a time.
+placeholder captioned with the path it wants, at the correct size — which is
+what `pokemon.sim` shows today.
 
-## Sizing
+## How these were normalised
 
-- **16:10, landscape.** The pane is `aspect-ratio:16/10` and the image is
-  `object-fit:cover`, so anything else gets cropped from the centre. Crop it
-  yourself if the middle isn't the part that matters.
-- **~1000×625 is plenty.** The pane renders ~570×356 on a full-width desktop
-  card and goes full-width below 1100px, where the two cards stack.
-- **Keep each file under ~250KB**, same budget as the hero pool.
-- Thumbnails sit at `grayscale(.55)` / 82% opacity until you hover the card,
-  so **pick images that survive being desaturated** — one that reads only
-  through its colour will look dead at rest. High contrast and a clear subject
-  beat a busy screenshot.
+The supplied files ranged from 200×200 to 2777×1857, aspect ratios from 0.92
+to 3.50, and seven of them were PNGs carrying a `.jpg` extension. They were
+converted to real progressive JPEGs at 16:10 under two different treatments,
+because they are two different kinds of picture:
 
-## Adding another log
+- **Crop** (`bike-light`, `tellura`, `unix-shell`) — photos, and anything
+  already near 16:10. Centre-cropped to fill the pane.
+- **Fit** (everything else) — diagrams, plots, logos and icons, letterboxed
+  onto a matched background rather than cropped. **This is the important
+  one.** `audio-style-transfer` is a 3.14:1 spectrogram and `ansible-wrangler`
+  is 3.50:1; a centre crop to 16:10 throws away half the width, which for a
+  plot or a schematic is the half carrying the information.
 
-Copy a `.jos-log` block in `index.html`, point `src` and `label` at a new file
-in here, and add the row to the table above. The grid is `auto-fill`, so the
-card places itself and the column count looks after itself — there is no count
-to keep in sync.
+The letterbox colour is sampled from each source's own corners, so it's
+invisible where the source already had a flat margin — white behind the
+diagrams, black behind the Roomform logo, the BASH card's own charcoal.
+
+**Transparent sources are flattened onto white, never onto the panel.** Five
+of them (`alu`, `filesystem`, `threads`, `sevenseg`, `audio-style-transfer`)
+are black line art on transparency. Flattened onto the card's dark panel they
+would have disappeared entirely.
+
+Nothing was upscaled beyond 2.2×, so the two 200×200 icons land at 512×320
+rather than being stretched to mush.
+
+## If you replace one
+
+16:10, ~1000×625, under 250KB, and **it must survive being desaturated** —
+the pane sits at `grayscale(.55)` / 82% opacity until you hover the card, so
+an image that reads only through its colour will look dead at rest.
+
+Drop a new file in at any aspect ratio and re-run the normalisation rather
+than hand-cropping; the crop/fit rule is what keeps the wide ones legible.
+
+## Two things worth knowing
+
+**`unix-shell.jpg` is 267×167** — smaller than the 379px box it renders in,
+so it is visibly soft, and worse on a hidpi screen. It's the only one below
+1×. A larger source would fix it.
+
+**Six are stock logos rather than artefacts of the work**: `ansible-wrangler`
+(the Ansible mark), `filesystem` and `threads` (generic icons), `unix-shell`
+(the BASH logo), `gopher` (a cartoon gopher), `dodgeball` (the St. Jude
+mark). They're clean and they read, but the eight that *are* real output —
+the ALU schematic, the FPGA board, the spectrogram, the SLAM point cloud, the
+clock block diagram, the pickup wiring, the bike light on the bench, the
+Roomform mark — are noticeably stronger in the grid. Screenshots of your own
+work beat category icons here, because the card is already shaped like a
+window.

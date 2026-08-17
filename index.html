@@ -224,7 +224,11 @@ a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
 /* margin-top:auto on the action bar is what keeps the two CTAs on one line
    across the row when the blurbs are different lengths. */
 .jos-log-body{padding:12px 14px;display:flex;flex-direction:column;gap:5px}
+/* flex-wrap because one card (threads.lib) carries two CTAs — the library and
+   the TLS extension are separate repos. Two pills fit side by side on a
+   desktop column and drop to two lines on a phone rather than overflowing. */
 .jos-log-foot{margin-top:auto;display:flex;align-items:center;gap:10px;
+              flex-wrap:wrap;
               padding:10px 14px;border-top:1px solid rgba(var(--hair-rgb),.07)}
 /* Same pill as the résumé button, with the shell's prompt in front of it —
    the terminal's voice without gambling on whether a bare `$ open` reads as
@@ -593,7 +597,7 @@ a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
     <div class="jos-card jos-log" data-fly=".8" data-hot>
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-win-t" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">tke.dodgeball</span><span class="jos-win-d" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">Mar 2025</span></div>
       <div class="jos-log-shot"><photo-slot src="./assets/thumbs/dodgeball.jpg" radius="0" label="thumbs/dodgeball.jpg"></photo-slot></div>
-      <div class="jos-log-body"><h3 style="margin:0;font-size:15px;font-weight:600">Founded a charity dodgeball tournament</h3><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">BU's biggest Greek-life philanthropy event of 2025. 7,500 for St. Jude, 200+ attendees, 14 teams, sponsors from the Celtics to Red Bull.</p></div>
+      <div class="jos-log-body"><h3 style="margin:0;font-size:15px;font-weight:600">Founded a charity dodgeball tournament</h3><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">BU's biggest Greek-life philanthropy event of 2025. $7,500 for St. Jude, 200+ attendees, 14 teams, sponsors from the Celtics to Red Bull.</p></div>
       <div class="jos-log-foot"><a class="jos-log-cta" data-hot href="https://fundraising.stjude.org/site/TR/TKE/TKE?team_id=317373&amp;pg=team&amp;fr_id=159592" target="_blank" rel="noopener noreferrer"><span class="jos-log-p">$</span>view fundraiser ↗</a></div>
     </div>
     <div class="jos-card jos-log" data-fly=".8" data-hot>
@@ -625,7 +629,8 @@ a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-win-t" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">threads.lib</span><span class="jos-win-d" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">Oct–Dec 2023</span></div>
       <div class="jos-log-shot"><photo-slot src="./assets/thumbs/threads.jpg" radius="0" label="thumbs/threads.jpg"></photo-slot></div>
       <div class="jos-log-body"><h3 style="margin:0;font-size:15px;font-weight:600">Threading library &amp; local storage</h3><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent)">C · x86 Assembly</span><p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(var(--ink-rgb),.68);text-wrap:pretty">A threading library in C with a locking mechanism and semaphore support, extended with thread-local storage on top of &lt;pthread.h&gt;.</p></div>
-      <div class="jos-log-foot"><a class="jos-log-cta" data-hot href="https://github.com/edelist/threading-library" target="_blank" rel="noopener noreferrer"><span class="jos-log-p">$</span>view source ↗</a></div>
+      <!-- the one card with two repos: the library and the TLS extension are separate -->
+      <div class="jos-log-foot"><a class="jos-log-cta" data-hot href="https://github.com/edelist/threading-library" target="_blank" rel="noopener noreferrer"><span class="jos-log-p">$</span>threading lib ↗</a><a class="jos-log-cta" data-hot href="https://github.com/edelist/thread-local-storage" target="_blank" rel="noopener noreferrer"><span class="jos-log-p">$</span>tls ↗</a></div>
     </div>
     <div class="jos-card jos-log" data-fly=".8" data-hot>
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(var(--hair-rgb),.07)"><span style="width:7px;height:7px;border-radius:50%;background:#ff5f57;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#febc2e;opacity:.8"></span><span style="width:7px;height:7px;border-radius:50%;background:#28c840;opacity:.8"></span><span class="jos-win-t" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.55)">unix.shell</span><span class="jos-win-d" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--accent-rgb),.8)">Sep–Oct 2023</span></div>

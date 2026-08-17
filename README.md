@@ -360,29 +360,35 @@ Roomform timeline cards already use for their org name, so it costs no new
 CSS. Cards with no language given (`tellura.pub`, `tke.dodgeball`, `alu.v`,
 `sevenseg.drv`, `roomform.ai`) simply omit the span.
 
-### What the build logs still need
+### Every CTA now points somewhere real
 
-Most cards now carry real copy, real dates and a verified repo link — all
-nine supplied GitHub URLs were checked and return 200. Four things are
-outstanding, and each is marked with an HTML comment directly above its
-`.jos-log-foot`:
+All twelve supplied GitHub URLs were checked and return 200. Nothing in the
+section is a placeholder any more.
 
-| card | what's missing |
-| ---- | -------------- |
-| `alu.v` | repo URL, and the blurb is still a generic placeholder |
-| `sevenseg.drv` | repo URL, and the blurb is still a generic placeholder |
-| `roomform.ai` | repo or product URL |
-| `tke.dodgeball` | any destination (`YOUR_DODGEBALL_LINK`) |
+Four cards are worth knowing about:
 
-`grep -n 'edelist/"\|YOUR_' index.html` finds them.
+- **`threads.lib` carries two CTAs** — `threading lib` and `tls`. The library
+  and the thread-local-storage extension are separate repos, so the footer is
+  `flex-wrap` and holds two pills. They fit on one line down to 320px; the
+  wrap is insurance, not a layout in use.
+- **`bike.light` and `roomform.ai` aren't repos** — both point at Drive
+  product videos, so their labels read `watch demo` rather than `view source`.
+- **`gopher.app` uses the canonical `/Gopher` repo URL.** An older spelling
+  of the name still 301s to it; don't reintroduce it, here or in the markup.
+  Following a redirect on every click is worse than pointing at the real name.
+- **`tke.dodgeball` points at the St. Jude team page**, so its label is
+  `view fundraiser`.
 
-Two notes on the ones that are done:
+### No em dashes in the descriptions
 
-- **`bike.light` is the only CTA that isn't a repo** — it points at the Drive
-  product video, so its label reads `watch demo` rather than `view source`.
-- **`gopher.app` uses `/Gopher`, not `/Gophur`.** The supplied URL 301s —
-  the repo was renamed — and following a redirect on every click is worse
-  than pointing at the canonical name.
+The card blurbs are written without them, deliberately. If you edit copy, keep
+that. Note this applies to the descriptions, not to the en dashes in date
+ranges (`Sep–Dec 2024`) or page numbers (`8–29`) — those are a different
+character and must stay.
+
+Section headings elsewhere on the page still use em dashes (`// logs —
+projects`, the footer line, the terminal greeting); they were left alone as
+chrome rather than description.
 
 ## Metadata, favicon & social cards
 
@@ -481,13 +487,12 @@ To reskin, edit those two token blocks and nothing else.
   card had no destination when it was built; the button is wired and waiting
   on a URL. If one never exists, drop that card's `.jos-log-foot` — the
   layout doesn't need it, it just loses the bottom bar.
-- **Outstanding log links** — `grep -n 'edelist/"\|YOUR_' index.html`.
-  `alu.v`, `sevenseg.drv` and `roomform.ai` need a repo/product URL;
-  `tke.dodgeball` needs any destination. Everything else is a verified link.
-  Cards are ordered newest-first by DOM order, so changing a date may mean
-  moving the block.
-- **Log thumbnails** — fifteen files into `assets/thumbs/` (16:10, ~1000×625,
-  under 250KB). The README in there has the filename table.
+- **Log card order** — newest-first by DOM order, so changing a date may mean
+  moving the block. Every CTA is a live link; nothing is a placeholder.
+- **Log thumbnails** — fourteen of fifteen are in. `pokemon.jpg` is the one
+  still missing, and `unix-shell.jpg` is too small (267px in a 379px box) so
+  it renders soft. See `assets/thumbs/README.md` for sizing and the crop/fit
+  rule used to normalise them.
 - **Copy / resume content** — the card divs in `index.html`; each has an
   OS-window header (`munich.kyrall`, `boston.bu`, …) and an `id="stop-…"`
   anchor used by the globe's "open chapter" links.
