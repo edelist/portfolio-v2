@@ -390,6 +390,39 @@ Section headings elsewhere on the page still use em dashes (`// logs —
 projects`, the footer line, the terminal greeting); they were left alone as
 chrome rather than description.
 
+## The site does not depend on a CDN
+
+`js/support.js` renders the whole page and throws if React is missing, so
+anything that stops React loading gives a **blank page, not a degraded one**.
+It ships pointing at unpkg.com; a CDN outage, a corporate network that blocks
+public CDNs, or a region that cannot reach unpkg would all have taken the site
+down. That is the wrong failure mode for the one link you hand to a recruiter.
+
+React and ReactDOM are therefore served from `js/vendor/` (144KB). The wiring
+is a `window.__resources` map in the real `<head>`, above the runtime script.
+That is the runtime's **own** override hook — `cdnScriptFor()` consults it
+before falling back to the CDN — so `js/support.js` stays untouched, which
+matters because it is generated and marked do-not-edit.
+
+The vendored files are the byte-identical unpkg builds; each was checked
+against the SRI hash `support.js` pins before being committed:
+
+```
+openssl dgst -sha384 -binary js/vendor/react.production.min.js | openssl base64 -A
+```
+
+**If the pinned React version in `support.js` ever changes**, the map keys no
+longer match, the runtime silently goes back to unpkg, and you lose this
+protection without any visible symptom. Re-download to match and update both
+the URLs and the files together.
+
+Babel is deliberately *not* vendored: ~3MB, and only fetched for jsx
+`x-import`s, which this page has none of. It still points at unpkg, unused.
+
+Google Fonts is still a third-party request. It cannot carry SRI (the CSS it
+returns varies by user agent), and a failure there costs a webfont, not the
+page, so it is left alone.
+
 ## Metadata, favicon & social cards
 
 Title, description, canonical, theme-colour, icons, Open Graph, Twitter card
