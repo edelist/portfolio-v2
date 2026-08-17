@@ -489,10 +489,9 @@ To reskin, edit those two token blocks and nothing else.
   layout doesn't need it, it just loses the bottom bar.
 - **Log card order** — newest-first by DOM order, so changing a date may mean
   moving the block. Every CTA is a live link; nothing is a placeholder.
-- **Log thumbnails** — fourteen of fifteen are in. `pokemon.jpg` is the one
-  still missing, and `unix-shell.jpg` is too small (267px in a 379px box) so
-  it renders soft. See `assets/thumbs/README.md` for sizing and the crop/fit
-  rule used to normalise them.
+- **Log thumbnails** — all fifteen are in. `unix-shell.jpg` is the weak one:
+  267px of source in a 379px box, so it renders soft. See
+  `assets/thumbs/README.md` for sizing and the crop/fit rule.
 - **Copy / resume content** — the card divs in `index.html`; each has an
   OS-window header (`munich.kyrall`, `boston.bu`, …) and an `id="stop-…"`
   anchor used by the globe's "open chapter" links.
@@ -514,7 +513,7 @@ To reskin, edit those two token blocks and nothing else.
 - Nav: status-bar links ease the page to their target instead of jumping;
   "open chapter" lands its card dead-centre in the viewport (any anchor with
   `data-center` does). Any scroll, touch, or keypress hands control back.
-- Terminal: `help`, `whoami`, `where`, `next`, `work`, `play`, `resume`,
+- Terminal: `help`, `whoami`, `where`, `next`, `work`, `fun`, `resume`,
   `contact`, `ls`, `clear` (+ a couple of easter eggs).
 - Timeline: route draws pinned to mid-screen; cards slide in from their
   side of the page; the card logos colourize on hover.

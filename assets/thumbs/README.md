@@ -22,11 +22,11 @@ Filenames are referenced directly in `index.html`, so they must match:
 | `fpga-clock.jpg`            | `fpga.clock`       | yes      |
 | `gopher.jpg`                | `gopher.app`       | yes      |
 | `tellura.jpg`               | `tellura.pub`      | yes      |
-| `pokemon.jpg`               | `pokemon.sim`      | **no**   |
+| `pokemon.jpg`               | `pokemon.sim`      | yes      |
 
-**A missing file is not a broken layout.** `<photo-slot>` renders a dashed
-placeholder captioned with the path it wants, at the correct size — which is
-what `pokemon.sim` shows today.
+All fifteen are in. **A missing file would not be a broken layout** anyway:
+`<photo-slot>` renders a dashed placeholder captioned with the path it wants,
+at the correct size, so a replacement can land whenever.
 
 ## How these were normalised
 
