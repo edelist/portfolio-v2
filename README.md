@@ -405,9 +405,8 @@ og/twitter tags and 4 icon links are in the raw response.
 
 ### The URL is the one thing to keep in step
 
-Every absolute URL is `https://edelist.github.io/portfolio-v2/`, which is where
-this repo's Pages build lands today. Point a custom domain at it and four
-places change together: the `<head>` block, `sitemap.xml`, `robots.txt`, and
+Every absolute URL is `https://jedelist.com/`, the site's custom domain (set by `CNAME`).
+If the domain ever changes, four places move together: the `<head>` block, `sitemap.xml`, `robots.txt`, and
 the JSON-LD `url`/`image`.
 
 **`og:image` must stay absolute.** A relative path does not unfurl on any
@@ -468,7 +467,7 @@ To reskin, edit those two token blocks and nothing else.
 
 ## Editing guide
 
-- **Site URL** — `edelist.github.io/portfolio-v2` appears in `index.html`'s
+- **Site URL** — `jedelist.com` appears in `index.html`'s
   head (canonical, og:url, og:image, twitter:image, JSON-LD), in `sitemap.xml`
   and in `robots.txt`. If a custom domain lands, all three files change
   together — and `og:image` has to stay absolute or the card stops unfurling.

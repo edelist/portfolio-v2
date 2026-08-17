@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://edelist.github.io/portfolio-v2/sitemap.xml
+Sitemap: https://jedelist.com/sitemap.xml
