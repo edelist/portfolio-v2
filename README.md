@@ -390,6 +390,54 @@ Section headings elsewhere on the page still use em dashes (`// logs —
 projects`, the footer line, the terminal greeting); they were left alone as
 chrome rather than description.
 
+## The password gate is a curtain, not a lock
+
+`js/gate.js` puts a password prompt over the site. **It is not security and
+cannot be made into security on this host.** GitHub Pages serves static files
+with no server-side auth, so the browser receives the entire page *before* any
+script runs. All of these bypass it completely:
+
+```
+curl https://jedelist.com     # returns the whole page
+View Source / DevTools        # returns the whole page
+JavaScript disabled           # no gate at all
+```
+
+The content sits in the DOM behind the curtain the whole time — measured: 15
+log cards present and readable while the prompt is up. Storing the password as
+a SHA-256 hash only stops someone reading it out of `gate.js` at a glance; it
+protects nothing, because the content was never hidden.
+
+**What it does do** is stop a casual visitor who opens the URL from browsing
+the site. That is the entire benefit. It is the right tool for "not ready to
+show yet" and the wrong tool for anything confidential.
+
+The one genuinely effective part is the `noindex` meta plus `Disallow: /` in
+`robots.txt`, which keeps the site out of search results while it is gated.
+
+### Removing it
+
+Three things move together — `grep -n GATE index.html robots.txt`:
+
+1. delete the `<script src="./js/gate.js">` line in `index.html`
+2. flip `<meta name="robots">` back to `index, follow`
+3. restore `robots.txt` to `Allow: /`
+
+### If it ever needs to be real
+
+Ranked by effort. Only these actually withhold the content:
+
+- **Take it down** — remove `CNAME` / disable Pages. Total, instant, free.
+- **Cloudflare Access** — put the domain behind Cloudflare and require an
+  email one-time-pin or Google login. Free tier covers a personal site, and
+  it authenticates at the edge, so the HTML never reaches an unauthorised
+  visitor. This is the right answer if you want a real gate on this domain.
+- **A host with built-in protection** — Netlify and Vercel both offer
+  password-protected sites on paid plans, enforced server-side.
+
+Unlock lasts one browser session (`sessionStorage`), so a reload does not
+re-prompt but a new tab does.
+
 ## The site does not depend on a CDN
 
 `js/support.js` renders the whole page and throws if React is missing, so

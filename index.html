@@ -21,7 +21,8 @@
 <title>Jack Edelist</title>
 <meta name="description" content="Engineer, founder, artist/dj and athlete. An interactive globe, a typeable shell, and the flight path from Hong Kong to Toronto to Boston to Munich that got me here.">
 <meta name="author" content="Jack Edelist">
-<meta name="robots" content="index, follow">
+<!-- GATE: noindex while the site is gated. Flip back to "index, follow" when it opens. -->
+<meta name="robots" content="noindex, nofollow">
 <link rel="canonical" href="https://jedelist.com/">
 
 <!-- browser chrome matches the page, per theme -->
@@ -87,6 +88,11 @@
      <helmet> (which the runtime injects later) — otherwise a light-mode
      visitor gets a dark flash on every load -->
 <script src="./js/theme.js"></script>
+<!-- GATE — temporary password curtain. This is NOT security: the page
+     ships in full before it runs (curl and View Source both return
+     everything). It only stops a casual visitor. Remove this line, the
+     robots meta below, and the Disallow in robots.txt together. -->
+<script src="./js/gate.js"></script>
 <!-- Serve React from this repo instead of unpkg.com.
      The whole page is rendered by the runtime below, which hard-fails
      ("window.React is not available yet") if React doesn't load — so an
