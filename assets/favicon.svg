@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- ~/jack — the shell prompt from the status bar, as an app tile.
+       Geometry matches the raster set in assets/ (generated at 8x and
+       downsampled); if you change one, change both. Accent is --accent
+       from the dark theme, which holds up against light and dark browser
+       chrome alike; the glyph is --bg. -->
+  <rect width="64" height="64" rx="14" fill="#79b0ff"/>
+  <g fill="none" stroke="#08090c" stroke-width="5.4"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18.56 19.84 L30.08 32 L18.56 44.16"/>
+    <path d="M35.84 44.16 L49.92 44.16"/>
+  </g>
+</svg>

@@ -7,6 +7,9 @@ crossfades and catches a passing light, custom cursor. Light and dark.
 ## File map
 
 ```
+site.webmanifest      PWA manifest (name, icons, theme colours)
+robots.txt            crawl policy + sitemap pointer
+sitemap.xml           one URL; update if the site ever gets more pages
 index.html            page markup + the page controller:
                       theme tokens · custom cursor · Munich clock · scroll
                       system (route draw pinned to mid-viewport + sideways
@@ -25,6 +28,10 @@ js/support.js         rendering runtime — do not edit
 assets/photos/        your photos (see the README in there)
 assets/logos/         company / school marks (see the README in there)
 assets/thumbs/        log-card thumbnails (see the README in there)
+assets/favicon.svg    THE mark — shell prompt on an accent tile; edit this one
+assets/favicon.ico    …and re-export the rasters to match (favicon-16/-32,
+assets/og.png         apple-touch-icon, icon-192/-512). og.png is the 1200×630
+                      social card.
 assets/font-awesome/  icons (socials, resume download, scroll hints)
 js/image-slot.js      UNUSED — the old drag-and-drop authoring component.
                       Nothing loads it any more; safe to delete
@@ -343,6 +350,68 @@ carries two deliberate placeholders:
 outstanding. The blurbs describe what each project *is*; they carry no
 invented metrics, and they're written to be replaced with your specifics.
 
+## Metadata, favicon & social cards
+
+Title, description, canonical, theme-colour, icons, Open Graph, Twitter card
+and a `Person` JSON-LD block all sit in the **real `<head>`** — deliberately
+not in `<helmet>`.
+
+**This is the load-bearing part.** `<helmet>` is injected by the runtime after
+the page boots, and nothing that consumes these tags gets that far: iMessage,
+Slack, Discord, X and LinkedIn fetch the raw HTML and never run JavaScript. An
+`og:image` inside `<helmet>` is an unfurl that silently doesn't happen. Same
+class of reason `js/theme.js` sits up there. Verified with `curl` — all 18
+og/twitter tags and 4 icon links are in the raw response.
+
+### The URL is the one thing to keep in step
+
+Every absolute URL is `https://edelist.github.io/portfolio-v2/`, which is where
+this repo's Pages build lands today. Point a custom domain at it and four
+places change together: the `<head>` block, `sitemap.xml`, `robots.txt`, and
+the JSON-LD `url`/`image`.
+
+**`og:image` must stay absolute.** A relative path does not unfurl on any
+platform — this is the single most common way a social card silently breaks.
+
+### The mark
+
+The favicon is the shell prompt `>_` — the same brand as `~/jack` and the
+blinking caret in the status bar — knocked out of an accent-blue rounded tile,
+so it reads as an app icon and suits the OS-window theme.
+
+The wireframe globe was the obvious candidate and is the wrong one: at 16×16
+its three ellipses collapse into a fuzzy dot. Two thick strokes survive. Blue
+also holds against light *and* dark browser chrome, which a near-black tile
+doesn't.
+
+`assets/favicon.svg` is the source of truth and the primary `<link>` — the
+only one that stays sharp on a hidpi tab strip. The rasters exist because some
+browsers skip SVG icons, and iOS/Android need PNGs:
+
+| file | why |
+| ---- | --- |
+| `favicon.ico` | 16/32/48/64 multi-size fallback |
+| `favicon-16.png`, `favicon-32.png` | explicit small sizes |
+| `apple-touch-icon.png` | 180×180, opaque, no corner radius — iOS masks it itself |
+| `icon-192.png`, `icon-512.png` | manifest; `purpose:"any maskable"`, so the mark is inset to the middle 80% safe zone |
+
+**If you change the mark, change both** — the SVG and the rasters are separate
+files with the same geometry, and nothing regenerates one from the other. The
+icons were drawn at 8× and downsampled (Pillow's primitives aren't
+antialiased); the numbers are normalised 0–1 coordinates in the SVG.
+
+### The social card
+
+`assets/og.png` is 1200×630, built with the site's real webfonts (Space Grotesk
++ JetBrains Mono) — window chrome, the mark, the name, the tagline. Scrapers
+don't run JS, so nothing from the globe or the mosaic can appear in it; it has
+to be a static image, which is why it's a purpose-made card rather than a
+screenshot.
+
+Re-cut it after changing the tagline or the name. Keep it under ~1MB (it's
+60KB) and keep 1200×630 — the `og:image:width`/`height` tags declare it, and a
+mismatch makes some platforms fall back to a small square card.
+
 ## Theming
 
 Every colour goes through CSS custom properties defined in one place — the
@@ -359,6 +428,14 @@ To reskin, edit those two token blocks and nothing else.
 
 ## Editing guide
 
+- **Site URL** — `edelist.github.io/portfolio-v2` appears in `index.html`'s
+  head (canonical, og:url, og:image, twitter:image, JSON-LD), in `sitemap.xml`
+  and in `robots.txt`. If a custom domain lands, all three files change
+  together — and `og:image` has to stay absolute or the card stops unfurling.
+- **Instagram handle is inconsistent** — the hero socials link
+  `instagram.com/jack_edelist`; the contact section and the JSON-LD `sameAs`
+  link `instagram.com/_edelist`. One of the two is wrong; pick one and make
+  all three agree.
 - **Resume link** — 2 places in `index.html` (status bar + contact section).
   Use Drive's **direct-download** form, `uc?export=download&id=FILE_ID`, not
   the `/view?usp=sharing` URL Drive hands you — that one opens its preview

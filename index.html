@@ -3,6 +3,86 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- ── metadata ───────────────────────────────────────────────────────────
+     All of this lives in the REAL <head>, not in <helmet>, for the same
+     class of reason js/theme.js does: the helmet block is injected by the
+     runtime after the page boots, and the things that consume these tags
+     never get that far. Social scrapers (iMessage, Slack, Discord, X,
+     LinkedIn) fetch the raw HTML and do not run JavaScript, so a <helmet>
+     og:image is an unfurl that silently doesn't happen.
+
+     THE ONE THING TO CHANGE: every absolute URL below is
+     https://edelist.github.io/portfolio-v2/ — the GitHub Pages address this
+     repo deploys to today. Point a custom domain at it (add a CNAME file)
+     and these all need updating together, here and in sitemap.xml and
+     robots.txt. og:image MUST stay absolute — a relative path does not
+     unfurl anywhere. -->
+<title>Jack Edelist — engineer · founder · artist/dj · athlete</title>
+<meta name="description" content="Engineer, founder, artist/dj and athlete. An interactive globe, a typeable shell, and the flight path from Hong Kong to Toronto to Boston to Munich that got me here.">
+<meta name="author" content="Jack Edelist">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://edelist.github.io/portfolio-v2/">
+
+<!-- browser chrome matches the page, per theme -->
+<meta name="theme-color" content="#08090c" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#eceef3" media="(prefers-color-scheme: light)">
+
+<!-- Icons. The SVG is the primary — it's the only one that stays sharp on a
+     hidpi tab strip — with the .ico as the fallback for browsers that skip
+     it. Both carry the same mark: the shell prompt from the status bar. -->
+<link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="./assets/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="./assets/apple-touch-icon.png">
+<link rel="manifest" href="./site.webmanifest">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="~/jack">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://edelist.github.io/portfolio-v2/">
+<meta property="og:title" content="Jack Edelist — engineer · founder · artist/dj · athlete">
+<meta property="og:description" content="An interactive globe, a typeable shell, and the flight path from Hong Kong to Toronto to Boston to Munich that got me here.">
+<meta property="og:image" content="https://edelist.github.io/portfolio-v2/assets/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A terminal window titled jack@edelist:~ over the name Jack Edelist and the line: engineer · founder · artist/dj · athlete.">
+
+<!-- X / Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@JackEdelist">
+<meta name="twitter:creator" content="@JackEdelist">
+<meta name="twitter:title" content="Jack Edelist — engineer · founder · artist/dj · athlete">
+<meta name="twitter:description" content="An interactive globe, a typeable shell, and the flight path from Hong Kong to Toronto to Boston to Munich that got me here.">
+<meta name="twitter:image" content="https://edelist.github.io/portfolio-v2/assets/og.png">
+<meta name="twitter:image:alt" content="A terminal window titled jack@edelist:~ over the name Jack Edelist and the line: engineer · founder · artist/dj · athlete.">
+
+<!-- Structured data: what a search engine reads to connect this page to the
+     person. Keep sameAs in step with the socials in the hero and contact. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": "Jack Edelist",
+  "url": "https://edelist.github.io/portfolio-v2/",
+  "image": "https://edelist.github.io/portfolio-v2/assets/og.png",
+  "email": "mailto:jackedelist@gmail.com",
+  "jobTitle": "Engineer & Founder",
+  "description": "Engineer, founder, artist/dj and athlete.",
+  "alumniOf": [
+    { "@type": "CollegeOrUniversity", "name": "Boston University" },
+    { "@type": "EducationalOrganization", "name": "Upper Canada College" }
+  ],
+  "sameAs": [
+    "https://www.linkedin.com/in/jack-edelist",
+    "https://www.github.com/edelist",
+    "https://www.instagram.com/_edelist",
+    "https://x.com/JackEdelist"
+  ]
+}
+</script>
+
 <!-- theme must resolve before first paint, so it loads here rather than in
      <helmet> (which the runtime injects later) — otherwise a light-mode
      visitor gets a dark flash on every load -->
@@ -361,7 +441,7 @@ a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-soft)}
   <div style="position:relative;z-index:2;display:flex;justify-content:center;gap:26px;font-size:18px">
     <a data-hot href="https://www.linkedin.com/in/jack-edelist" target="_blank" style="color:rgba(var(--ink-rgb),.75)" style-hover="color:var(--accent)"><i class="fa fa-linkedin"></i></a>
     <a data-hot href="https://www.github.com/edelist" target="_blank" style="color:rgba(var(--ink-rgb),.75)" style-hover="color:var(--accent)"><i class="fa fa-github"></i></a>
-    <a data-hot href="https://www.instagram.com/jack_edelist" target="_blank" style="color:rgba(var(--ink-rgb),.75)" style-hover="color:var(--accent)"><i class="fa fa-instagram"></i></a>
+    <a data-hot href="https://www.instagram.com/_edelist" target="_blank" style="color:rgba(var(--ink-rgb),.75)" style-hover="color:var(--accent)"><i class="fa fa-instagram"></i></a>
     <a data-hot href="https://x.com/JackEdelist" target="_blank" rel="noopener noreferrer" aria-label="X — @JackEdelist" style="color:rgba(var(--ink-rgb),.75);display:flex;align-items:center" style-hover="color:var(--accent)"><svg viewBox="0 0 24 24" width=".86em" height=".86em" fill="currentColor" aria-hidden="true" style="display:block"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
   </div>
   <div style="position:relative;z-index:2;display:flex;align-items:center;gap:34px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(var(--ink-rgb),.45)">
