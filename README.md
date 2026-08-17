@@ -338,30 +338,51 @@ table are in `assets/thumbs/README.md`.
 
 ### Order is reverse-chronological, and DOM order *is* page order
 
-Newest at the top. The grid places cards in document order, so unlike the
-timeline — which sorts itself on mobile via `[data-m]` — there is no
-ordering attribute here to keep in sync. **Adding a card means inserting it at
-the right date, not appending it.**
+Newest at the top, sorted by **end** date then start date. The grid places
+cards in document order, so unlike the timeline — which re-sorts itself on
+mobile via `[data-m]` — there is no ordering attribute here to keep in sync.
+**Adding a card means inserting it at the right date, not appending it.**
 
-Ties are broken by hand and mean nothing: `vslam.3d`/`melstyle.ai` (both May
-2024) and the four Dec 2022 cards sit in the order they were given.
+Dates follow the timeline's format: `Sep–Dec 2024` for a range inside one
+year, a bare `Dec 2023` for a single month. Ties (`vslam.3d`/`melstyle.ai`,
+both Feb–May 2024) are broken by hand and mean nothing.
+
+The date column got wider when ranges replaced single months, which is worth
+knowing because `.jos-win-t` is the only part of that header row allowed to
+shrink. Checked at 1280 and 320: no title ellipsizes and no date wraps, but
+that's the thing a longer date eats into.
+
+### A language line under the heading
+
+Ten cards carry a mono accent line between the `h3` and the blurb — `Python`,
+`C`, `Verilog`, `SwiftUI` and so on. It reuses the pattern the Fortune and
+Roomform timeline cards already use for their org name, so it costs no new
+CSS. Cards with no language given (`tellura.pub`, `tke.dodgeball`, `alu.v`,
+`sevenseg.drv`, `roomform.ai`) simply omit the span.
 
 ### What the build logs still need
 
-The thirteen engineering cards were scaffolded from a list of project names,
-so they carry deliberate placeholders:
+Most cards now carry real copy, real dates and a verified repo link — all
+nine supplied GitHub URLs were checked and return 200. Four things are
+outstanding, and each is marked with an HTML comment directly above its
+`.jos-log-foot`:
 
-- **The CTA points at the GitHub *profile*, not the repo** —
-  `https://www.github.com/edelist` on all thirteen. It's a working link, so
-  nothing is broken while you swap them one at a time.
-- **Two still read `SET_DATE`**: `alu.v` and `sevenseg.drv`. No date was
-  supplied for either, so rather than guess they sit provisionally at the end
-  of the Dec 2022 run — where the rest of that digital-logic coursework
-  landed — and need moving once the real dates are known.
+| card | what's missing |
+| ---- | -------------- |
+| `alu.v` | repo URL, and the blurb is still a generic placeholder |
+| `sevenseg.drv` | repo URL, and the blurb is still a generic placeholder |
+| `roomform.ai` | repo or product URL |
+| `tke.dodgeball` | any destination (`YOUR_DODGEBALL_LINK`) |
 
-`grep -n 'SET_DATE\|github.com/edelist' index.html` lists everything
-outstanding. The blurbs describe what each project *is*; they carry no
-invented metrics, and they're written to be replaced with your specifics.
+`grep -n 'edelist/"\|YOUR_' index.html` finds them.
+
+Two notes on the ones that are done:
+
+- **`bike.light` is the only CTA that isn't a repo** — it points at the Drive
+  product video, so its label reads `watch demo` rather than `view source`.
+- **`gopher.app` uses `/Gopher`, not `/Gophur`.** The supplied URL 301s —
+  the repo was renamed — and following a redirect on every click is worse
+  than pointing at the canonical name.
 
 ## Metadata, favicon & social cards
 
@@ -460,10 +481,11 @@ To reskin, edit those two token blocks and nothing else.
   card had no destination when it was built; the button is wired and waiting
   on a URL. If one never exists, drop that card's `.jos-log-foot` — the
   layout doesn't need it, it just loses the bottom bar.
-- **Log dates + repo links** — `grep -n 'SET_DATE\|github.com/edelist'
-  index.html`. Two cards (`alu.v`, `sevenseg.drv`) still need a date; all
-  thirteen build logs still need a real repo URL. Cards are ordered
-  newest-first by DOM order, so a date change may mean moving the block.
+- **Outstanding log links** — `grep -n 'edelist/"\|YOUR_' index.html`.
+  `alu.v`, `sevenseg.drv` and `roomform.ai` need a repo/product URL;
+  `tke.dodgeball` needs any destination. Everything else is a verified link.
+  Cards are ordered newest-first by DOM order, so changing a date may mean
+  moving the block.
 - **Log thumbnails** — fifteen files into `assets/thumbs/` (16:10, ~1000×625,
   under 250KB). The README in there has the filename table.
 - **Copy / resume content** — the card divs in `index.html`; each has an
