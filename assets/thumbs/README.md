@@ -11,6 +11,7 @@ Filenames are referenced directly in `index.html`, so they must match:
 | `tellura.jpg`               | `tellura.pub`      | no       |
 | `dodgeball.jpg`             | `tke.dodgeball`    | no       |
 | `fpga-clock.jpg`            | `fpga.clock`       | no       |
+| `pokemon.jpg`               | `pokemon.sim`      | no       |
 | `gopher.jpg`                | `gopher.srv`       | no       |
 | `alu.jpg`                   | `alu.v`            | no       |
 | `sevenseg.jpg`              | `sevenseg.drv`     | no       |
@@ -23,7 +24,7 @@ Filenames are referenced directly in `index.html`, so they must match:
 | `ansible-wrangler.jpg`      | `ansible.wrangler` | no       |
 | `roomform.jpg`              | `roomform.ai`      | no       |
 
-Fourteen is a lot of images to source. They land independently, so fill the
+Fifteen is a lot of images to source. They land independently, so fill the
 grid in whatever order you like — a card with no file behind it still holds
 its place at the right size.
 

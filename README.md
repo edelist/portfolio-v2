@@ -293,7 +293,7 @@ card names its own city in its window title.
 
 ## Log cards
 
-The fourteen cards under `// logs — projects` take the window metaphor literally:
+The fifteen cards under `// logs — projects` take the window metaphor literally:
 the thumbnail **is** the window's content pane, so the order is title bar →
 screenshot → copy → action bar, which is where a real app puts each of them.
 
@@ -333,18 +333,31 @@ Five things worth knowing:
 
 A missing thumbnail renders `<photo-slot>`'s dashed placeholder at the right
 size, captioned with the path it wants — the section ships before the images
-do, which is the state all fourteen are in now. Sizing rules and the filename
+do, which is the state all fifteen are in now. Sizing rules and the filename
 table are in `assets/thumbs/README.md`.
 
-### The twelve build logs still need two things each
+### Order is reverse-chronological, and DOM order *is* page order
 
-The engineering cards were scaffolded from a list of project names, so each
-carries two deliberate placeholders:
+Newest at the top. The grid places cards in document order, so unlike the
+timeline — which sorts itself on mobile via `[data-m]` — there is no
+ordering attribute here to keep in sync. **Adding a card means inserting it at
+the right date, not appending it.**
 
-- **`SET_DATE`** in the header, where the other cards carry a real date.
+Ties are broken by hand and mean nothing: `vslam.3d`/`melstyle.ai` (both May
+2024) and the four Dec 2022 cards sit in the order they were given.
+
+### What the build logs still need
+
+The thirteen engineering cards were scaffolded from a list of project names,
+so they carry deliberate placeholders:
+
 - **The CTA points at the GitHub *profile*, not the repo** —
-  `https://www.github.com/edelist` on all twelve. It's a working link, so
+  `https://www.github.com/edelist` on all thirteen. It's a working link, so
   nothing is broken while you swap them one at a time.
+- **Two still read `SET_DATE`**: `alu.v` and `sevenseg.drv`. No date was
+  supplied for either, so rather than guess they sit provisionally at the end
+  of the Dec 2022 run — where the rest of that digital-logic coursework
+  landed — and need moving once the real dates are known.
 
 `grep -n 'SET_DATE\|github.com/edelist' index.html` lists everything
 outstanding. The blurbs describe what each project *is*; they carry no
@@ -448,8 +461,10 @@ To reskin, edit those two token blocks and nothing else.
   on a URL. If one never exists, drop that card's `.jos-log-foot` — the
   layout doesn't need it, it just loses the bottom bar.
 - **Log dates + repo links** — `grep -n 'SET_DATE\|github.com/edelist'
-  index.html`; the twelve build-log cards need a date and a real repo URL each.
-- **Log thumbnails** — fourteen files into `assets/thumbs/` (16:10, ~1000×625,
+  index.html`. Two cards (`alu.v`, `sevenseg.drv`) still need a date; all
+  thirteen build logs still need a real repo URL. Cards are ordered
+  newest-first by DOM order, so a date change may mean moving the block.
+- **Log thumbnails** — fifteen files into `assets/thumbs/` (16:10, ~1000×625,
   under 250KB). The README in there has the filename table.
 - **Copy / resume content** — the card divs in `index.html`; each has an
   OS-window header (`munich.kyrall`, `boston.bu`, …) and an `id="stop-…"`
