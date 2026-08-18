@@ -1,6 +1,4 @@
-# GATE: the site is behind a temporary password curtain, so keep it out of
-# search results. Restore "Allow: /" when the gate is removed.
 User-agent: *
-Disallow: /
+Allow: /
 
 Sitemap: https://jedelist.com/sitemap.xml
