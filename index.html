@@ -980,15 +980,19 @@ class Component extends DCLogic {
    */
   glideTo(el, center) {
     const OFFSET = 84;   // status bar + a little air above the target
-    const start = window.scrollY;
-    const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
     const r = el.getBoundingClientRect();
     // A [data-fly] card is mid-slide when you click, and it will have settled
     // by the time we arrive — so aim at where it will BE, not where it is.
     const f = this.flyEls && this.flyEls.find(x => x.el === el);
-    const top = r.top - (f ? f.ty : 0) + start;
+    const top = r.top - (f ? f.ty : 0) + window.scrollY;
     const shift = center ? Math.max(OFFSET, (innerHeight - r.height) / 2) : OFFSET;
-    const end = Math.max(0, Math.min(max, top - shift));
+    this.glideToY(top - shift);
+  }
+  /** The easing itself, on a raw document Y. `cd ~` has no element to aim at. */
+  glideToY(y) {
+    const start = window.scrollY;
+    const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+    const end = Math.max(0, Math.min(max, y));
     const dist = end - start;
     this.cancelGlide();
     if (Math.abs(dist) < 2) return;
@@ -1050,12 +1054,32 @@ class Component extends DCLogic {
   /** Run a shell command through js/terminal.js and append to the scrollback. */
   runCmd(v) {
     if (!this.term) return;   // module still loading (first ~100ms)
-    const resp = this.term.respond(v);
+    let resp = this.term.respond(v);
     if (resp === this.term.CLEAR) { this.setState({ termLines: [] }); return; }
+    // GOTO is an action, not a reply: print a confirmation line, then fly
+    // there on the same easing the status-bar nav uses, so arriving by shell
+    // and arriving by click look identical.
+    let go = null;
+    if (resp.startsWith(this.term.GOTO)) {
+      const target = resp.slice(this.term.GOTO.length);
+      go = target === 'TOP' ? 'TOP' : document.querySelector(target);
+      resp = go ? `→ ${target === 'TOP' ? '~' : target}` : `no such section: ${target}`;
+    }
     const lines = [...this.state.termLines,
       { text: '$ ' + v, cls: 'jos-echo' },   // echo
       { text: resp, cls: 'jos-out' }];        // reply
     this.setState({ termLines: lines.slice(-6) });      // keep the shell short
+    if (!go) return;
+    // let the reply paint before the page starts moving under it
+    requestAnimationFrame(() => {
+      if (go === 'TOP') {
+        history.replaceState(null, '', location.pathname + location.search);
+        this.glideToY(0);
+      } else {
+        history.replaceState(null, '', '#' + go.id);
+        this.glideTo(go);
+      }
+    });
   }
   /** Draw the route to match scroll progress; move the traveler; light passed nodes. */
   updateScroll() {

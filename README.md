@@ -23,7 +23,8 @@ js/mosaic.js          <photo-mosaic> — the hero wall: panning belt, light
 js/photo-slot.js      <photo-slot> — read-only image frame (flags, card logos)
 js/globe.js           the hero globe: projection math, coastlines, flight
                       route, drag/inertia, hover lighting, click-to-focus
-js/terminal.js        terminal command table — add commands here
+js/terminal.js        terminal command table + the ./story · cd story
+                      navigation targets — add commands here
 js/support.js         rendering runtime — do not edit
 assets/photos/        your photos (see the README in there)
 assets/logos/         company / school marks (see the README in there)
@@ -571,7 +572,11 @@ To reskin, edit those two token blocks and nothing else.
   "open chapter" lands its card dead-centre in the viewport (any anchor with
   `data-center` does). Any scroll, touch, or keypress hands control back.
 - Terminal: `help`, `whoami`, `where`, `next`, `work`, `fun`, `resume`,
-  `contact`, `ls`, `clear` (+ a couple of easter eggs).
+  `contact`, `ls`, `clear` (+ a couple of easter eggs). It also navigates:
+  `./story`, `./logs`, `./contact` (the labels the status-bar nav uses) and
+  `cd story` / `cd logs` / `cd contact` (what `ls` implies), with `cd ~` back
+  to the top. Arriving by shell uses the same easing as clicking the nav, so
+  the two look identical.
 - Timeline: route draws pinned to mid-screen; cards slide in from their
   side of the page; the card logos colourize on hover.
 - Status bar: the theme toggle names the mode it will switch you to.
